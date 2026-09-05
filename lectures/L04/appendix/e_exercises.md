@@ -141,7 +141,7 @@ Use the rule in [C.2](./c_stack.md#c2-counting-the-worst-case).
 calls `shift_bits`. How many bytes of stack?
 
 **b)** L03's program: the same main loop, plus an interrupt whose handler saves five registers
-and calls `button_pressed`, which itself calls `shift_bits`. How many bytes?
+and calls `btn_pressed`, which itself calls `shift_bits`. How many bytes?
 
 **c)** Where does the stack pointer end up, and what is the lowest byte actually occupied? These
 are not the same number.

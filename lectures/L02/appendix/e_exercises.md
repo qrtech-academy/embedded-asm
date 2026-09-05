@@ -41,7 +41,7 @@ A button is wired between an ATmega328P pin and ground, with nothing else attach
 
 **b)** What does `PINx` read when the button is not pressed? When it is?
 
-**c)** A driver subroutine `button_pressed` should return 1 when the button is down. Write, in
+**c)** A driver subroutine `btn_pressed` should return 1 when the button is down. Write, in
 words, what it has to do to the bit it read, and say why.
 
 **d)** Somebody proposes leaving `PORTx` at 0 and fitting an external pull-down resistor to

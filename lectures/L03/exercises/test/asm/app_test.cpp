@@ -2,13 +2,13 @@
  * @brief Integration tests for drivers/app/main.asm, run in the simulator.
  *
  *        Guarded by three flags at once, and the third one matters. HAVE_APP says a program
- *        exists in drivers/app; HAVE_LED and HAVE_BUTTON say the drivers its handler is built
+ *        exists in drivers/app; HAVE_LED and HAVE_BTN say the drivers its handler is built
  *        out of exist. The program is not new in L03: L01 puts a stack pointer and a call in
  *        it, and that program is complete and correct and has no handler in it at all. Testing
  *        it for one would report seven failures at a reader who has done everything right.
  *
- *        HAVE_BUTTON is what says otherwise. The handler cannot exist before `button.asm` does,
- *        because it calls `button_pressed`, so the button driver is the honest marker for "the
+ *        HAVE_BTN is what says otherwise. The handler cannot exist before `btn.asm` does,
+ *        because it calls `btn_pressed`, so the button driver is the honest marker for "the
  *        program this file is about", and a filename never was.
  *
  *        Every other assembly test in this course calls one subroutine and looks at what came
@@ -27,7 +27,7 @@
  *        asserting "your handler costs 88 cycles" would be pinning your instruction sequence,
  *        which is the exercise's job and not this file's.
  */
-#if defined(HAVE_APP) && defined(APP_HEX) && defined(HAVE_LED) && defined(HAVE_BUTTON)
+#if defined(HAVE_APP) && defined(APP_HEX) && defined(HAVE_LED) && defined(HAVE_BTN)
 
 #include <cstdint>
 
@@ -272,4 +272,4 @@ TEST(App, TheStackStaysWhereItShould)
     EXPECT_TRUE(mcu.lowestStackPtr() <= 0x08FFU);
 }
 
-#endif // defined(HAVE_APP) && defined(HAVE_LED) && defined(HAVE_BUTTON)
+#endif // defined(HAVE_APP) && defined(HAVE_LED) && defined(HAVE_BTN)

@@ -33,12 +33,12 @@ Topics include:
 * Timers, the watchdog, sleep, and the C ABI in both directions.
 
 **One body of code is built across the course, and it is yours to write:** an AVR assembly driver
-library (`drivers/`), grown one lecture at a time. `led.asm`, `button.asm`, `led_array.asm`,
+library (`drivers/`), grown one lecture at a time. `led.asm`, `btn.asm`, `led_array.asm`,
 `timer.asm`, `watchdog.asm` and the utilities under them, plus an application program that
 composes them.
 
 There is no second language to learn on the way. The only C++ that ships is
-[`device/`](./device/README.md), four headers of pinned ATmega328P constants, and it is there so
+[`device/`](./device/README.md), three headers of pinned ATmega328P constants, and it is there so
 the test suite can check your assembly against the datasheet rather than against itself. If you
 want a host-side library that computes the numbers this course quotes, that is a good exercise and
 [`device/README.md`](./device/README.md) says which numbers are worth it; nothing here ships a

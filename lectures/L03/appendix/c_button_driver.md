@@ -1,13 +1,13 @@
 # Appendix C - The Button Driver
 
 ## C.1 The task
-Write `drivers/source/button.asm`, extend `drivers/app/main.asm` with a handler, and write
+Write `drivers/source/btn.asm`, extend `drivers/app/main.asm` with a handler, and write
 `avr::interrupt::Vectors`.
 
 The button driver is the LED driver's mirror image for its first half and something new for its
 second. Both are handed an Arduino pin number and build a structure of register addresses; where
-`led_init` makes the pin an output, `button_init` makes it an input and switches its pull-up on.
-`button_pressed` is `led_enabled` with its answer inverted. The new part is the four subroutines
+`led_init` makes the pin an output, `btn_init` makes it an input and switches its pull-up on.
+`btn_pressed` is `led_enabled` with its answer inverted. The new part is the four subroutines
 that turn a pin change interrupt on and off for one pin without disturbing the other seven that
 share its vector.
 
@@ -39,7 +39,7 @@ all and reports success.
 
 ---
 
-## C.3 `button_init`
+## C.3 `btn_init`
 **Arguments:** `r25:r24` is the structure address, `r22` the Arduino pin number.
 **Returns:** `r24` is 0 on success, 1 if the pin is not one this driver accepts.
 
@@ -70,7 +70,7 @@ structurally different, one of the two is wrong.
 
 ---
 
-## C.4 `button_pressed`
+## C.4 `btn_pressed`
 **Arguments:** `r25:r24` is the structure address.
 **Returns:** `r24` is 1 if the button is down, 0 if it is up.
 
@@ -111,16 +111,16 @@ reports is the pin, now, and that is all it promises.
 ## C.5 The four interrupt subroutines
 All four take the structure address in `r25:r24`.
 
-**`button_enable_interrupt`** sets the port's bit in `PCICR` and the pin's bit in the structure's
+**`btn_enable_interrupt`** sets the port's bit in `PCICR` and the pin's bit in the structure's
 mask register. Both are read-modify-write.
 
-**`button_disable_interrupt`** clears the pin's bit in the mask register **and leaves `PCICR`
+**`btn_disable_interrupt`** clears the pin's bit in the mask register **and leaves `PCICR`
 alone**. `PCICR` enables a whole port's vector and other buttons on that port may still want it;
 clearing it here would silently switch off every one of them.
 
-**`button_interrupt_enabled`** returns 1 if the pin's bit in the mask register is set, else 0.
+**`btn_interrupt_enabled`** returns 1 if the pin's bit in the mask register is set, else 0.
 
-**`button_toggle_interrupt`** calls `button_interrupt_enabled` and then one of the other two.
+**`btn_toggle_interrupt`** calls `btn_interrupt_enabled` and then one of the other two.
 
 ### Pinned details
 **The driver does not touch the global interrupt flag.** No `sei`, no `cli`, anywhere in this
@@ -129,18 +129,18 @@ convenient and it is rude: it decides on your behalf that the whole program is n
 interrupted, at a moment chosen by whoever happened to configure a button last. `sei` belongs in
 your setup code, once, after everything is configured.
 
-**`button_interrupt_enabled` must return 1 for enabled and 0 for disabled**, and that sentence is
+**`btn_interrupt_enabled` must return 1 for enabled and 0 for disabled**, and that sentence is
 here because the classic mistake is to return them the wrong way round. Nothing about such code
 looks wrong: the branch is there, both constants are there, and they are swapped. Every caller
-then does the opposite of what it meant, and `button_toggle_interrupt` stops toggling and starts
+then does the opposite of what it meant, and `btn_toggle_interrupt` stops toggling and starts
 latching, which is a symptom two steps removed from its cause.
 
-**`button_disable_interrupt` shifts by the pin number**, field at offset 9, not by anything at
+**`btn_disable_interrupt` shifts by the pin number**, field at offset 9, not by anything at
 offset 0. Reaching for the wrong field gives a shift count of `0x23`, which produces a mask of
 zero, which clears nothing; with one button, "nothing happened" and "the right thing happened"
 look identical from outside. The test with two buttons is the one that can tell.
 
-**Preserve the structure pointer across the nested call in `toggle`.** `button_interrupt_enabled`
+**Preserve the structure pointer across the nested call in `toggle`.** `btn_interrupt_enabled`
 sets `Z` to the same value `toggle` had, so `Z` survives by coincidence, and relying on that is a
 decision rather than a fact about the contract. Pushing `r25:r24` and popping them after is two
 instructions and four cycles and needs no footnote. Then jump to the enable or disable subroutine
@@ -174,12 +174,12 @@ Every one of those has to be saved, because the interrupted code agreed to nothi
 and leaving `r18` and `r19` is the mistake that costs you eight cycles less and a bug that appears
 only when the main loop happens to be using them.
 
-**The LED and the button must be on different pins.** Putting both on 13 means `button_init` makes
+**The LED and the button must be on different pins.** Putting both on 13 means `btn_init` makes
 the pin an input after `led_init` made it an output, and the LED stops working in a way that looks
 like the handler never runs.
 
 **`sei` goes last, in setup, once.** Not in the driver, and not before the structures are built:
-an interrupt arriving before `button_init` has finished would run your handler against a structure
+an interrupt arriving before `btn_init` has finished would run your handler against a structure
 that is half zeros.
 
 **This is the only part of the course a unit test cannot reach.** Everything else you have written

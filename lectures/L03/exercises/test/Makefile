@@ -33,7 +33,7 @@ TEST_FILES := $(L01_TESTS)/avr/device_test.cpp \
               $(L02_TESTS)/avr/board_test.cpp \
               $(L02_TESTS)/asm/led_test.cpp \
               avr/vector_data_test.cpp \
-              asm/button_test.cpp \
+              asm/btn_test.cpp \
               asm/app_test.cpp \
               testsuite.cpp \
 
@@ -52,7 +52,7 @@ ASM_NAMES   := $(notdir $(basename $(ASM_SOURCES)))
 # What this suite expects to find, so that a file written under the wrong name is reported by
 # name instead of silently compiling its tests out. Deriving the flags from the directory is what
 # makes the mechanism work with no list to edit; this list is what makes its *absence* audible.
-EXPECTED_ASM := utils led button
+EXPECTED_ASM := utils led btn
 MISSING_ASM  := $(filter-out $(ASM_NAMES),$(EXPECTED_ASM))
 HAVE_FLAGS  := $(foreach name,$(ASM_NAMES),-DHAVE_$(shell echo $(name) | tr '[:lower:]' '[:upper:]'))
 

@@ -5,7 +5,7 @@ and nothing else: every subroutine in it is yours to write.
 ```text
 drivers/
 ├── include/     Shared .inc files: struct offsets and the constants tests agree on. Ours.
-├── source/      The subroutines. Yours. utils.asm in L01, then led.asm, button.asm, led_array.asm...
+├── source/      The subroutines. Yours. utils.asm in L01, then led.asm, btn.asm, led_array.asm...
 ├── app/         The program that composes them, with a vector table and a main loop. Yours.
 └── build/       Assembled output. Generated, never committed.
 ```

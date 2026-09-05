@@ -11,7 +11,7 @@ and shifting by `n` places means going round `n` times.
 
 That is not a curiosity. Every driver in this course is handed a pin number and has to turn it
 into a bit mask, and these two subroutines are how. `led_on` in L02 calls `shift_bits`;
-`button_init` in L03 calls both. Getting them right now means the rest of the course is about
+`btn_init` in L03 calls both. Getting them right now means the rest of the course is about
 peripherals rather than about bit twiddling.
 
 Creating the file is all it takes to switch its tests on; see

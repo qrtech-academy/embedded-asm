@@ -82,7 +82,7 @@ The second is this lecture's cross-check, and the answer is no, twice over.
 ## Reference
 * [Appendix A](./appendix/a_interrupts.md): the vector table and the interrupt sequence.
 * [Appendix B](./appendix/b_isr_contract.md): the ISR contract, and atomicity.
-* [Appendix C](./appendix/c_button_driver.md): the `button.asm` specification.
+* [Appendix C](./appendix/c_button_driver.md): the `btn.asm` specification.
 * [Appendix D](./appendix/d_exercises.md): the exercises.
 * Appendix E: the worked solutions, published after the lecture rather than with it.
 * [L02 Appendix A.5](../L02/appendix/a_io_ports.md#a5-a-button-and-why-pressed-reads-zero) for

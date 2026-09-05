@@ -145,7 +145,7 @@ means it stays right if something else changes the port behind its back, and it 
 cannot tell you whether the LED is *meant* to be on.
 
 **It does not check that the pin is an output.** `led_on` on a structure built by a future
-`button_init` would enable a pull-up rather than lighting anything. There is no type system here;
+`btn_init` would enable a pull-up rather than lighting anything. There is no type system here;
 the structure is seven bytes and any subroutine will operate on any seven bytes it is given.
 
 **It does not protect one LED from another.** Two structures pointing at the same bit of the same

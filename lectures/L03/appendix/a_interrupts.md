@@ -178,7 +178,7 @@ the first place in the course where that distinction stops being trivia and star
 assembler error.
 
 **So a handler for two buttons on one port has to ask each of them whether it was the one.** That
-is exactly what `button_pressed` is for, and it is why the driver stores a structure per button
+is exactly what `btn_pressed` is for, and it is why the driver stores a structure per button
 rather than a bit per port.
 
 And there is one question the handler cannot answer at all: **which way the pin went**. The

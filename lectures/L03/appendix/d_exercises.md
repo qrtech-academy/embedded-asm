@@ -56,7 +56,7 @@ long are interrupts disabled? The answer is not 88.
 ## 3. The prologue
 **Design.**
 
-A handler is about to be written. It calls `button_pressed`, which uses `r18`, `r19` and `r24`,
+A handler is about to be written. It calls `btn_pressed`, which uses `r18`, `r19` and `r24`,
 and it uses `r24` and `r25` itself to pass a pointer.
 
 **a)** List every register the handler must save, and say why the list is not "the call-saved
@@ -96,17 +96,17 @@ mask registers, and how many vectors are now involved?
 ## 5. The button driver
 **Code.**
 
-Write `drivers/source/button.asm` to the specification in [Appendix C](./c_button_driver.md).
+Write `drivers/source/btn.asm` to the specification in [Appendix C](./c_button_driver.md).
 
 **a)** Write all six subroutines.
 
 **b)** Run `make test`.
 
-**c)** Deliberately swap the two return values in `button_interrupt_enabled`, rebuild, and note
-which tests fail. One of them is not about `button_interrupt_enabled` at all. Explain why it
+**c)** Deliberately swap the two return values in `btn_interrupt_enabled`, rebuild, and note
+which tests fail. One of them is not about `btn_interrupt_enabled` at all. Explain why it
 failed, then put the code back.
 
-**d)** Deliberately make `button_disable_interrupt` clear `PCICR` as well as the mask bit. Say
+**d)** Deliberately make `btn_disable_interrupt` clear `PCICR` as well as the mask bit. Say
 which test catches it and why a test with only one button could not.
 
 ---
@@ -158,8 +158,8 @@ Your handler runs with interrupts disabled. This exercise is about finding out f
 about which parts of that number you can measure and which you cannot.
 
 **a) By hand.** Count the cycles of your handler along the path where the button is **not**
-pressed: prologue, the call to `button_pressed`, the compare, the branch taken, epilogue, `reti`.
-You measured `led_enabled` this way in L02, and `button_pressed` measures the same way; if you
+pressed: prologue, the call to `btn_pressed`, the compare, the branch taken, epilogue, `reti`.
+You measured `led_enabled` this way in L02, and `btn_pressed` measures the same way; if you
 have not measured it yet, do that now.
 
 **b) The whole window.** Add the entry to your handler's own cost: four cycles for the hardware's
@@ -172,7 +172,7 @@ disagree.
 **c) By measurement.**
 
 ```bash
-make measure IMAGE=app CALLS="led_init:0x0200:13 button_init:0x0240:12 --drive B4=1 isr_pcint0"
+make measure IMAGE=app CALLS="led_init:0x0200:13 btn_init:0x0240:12 --drive B4=1 isr_pcint0"
 ```
 
 `--drive B4=1` holds the button's pin high, which is a button that is **not** pressed. `IMAGE=app`
@@ -186,7 +186,7 @@ you charged one cycle instead of two, and forgetting that the measured figure al
 **e) Now the other path.** Predict the pressed-path cost before measuring it:
 
 ```bash
-make measure IMAGE=app CALLS="led_init:0x0200:13 button_init:0x0240:12 --drive B4=0 isr_pcint0"
+make measure IMAGE=app CALLS="led_init:0x0200:13 btn_init:0x0240:12 --drive B4=0 isr_pcint0"
 ```
 
 State the difference between the two paths and account for every cycle of it. There are five

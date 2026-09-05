@@ -18,8 +18,8 @@ do here that breaks `shift_bits` or the LED driver fails in L03, where you are l
 | L01's files | see [L01's README](../../../L01/exercises/test/README.md) | the core's constants and `utils.asm` |
 | L02's files | see [L02's README](../../../L02/exercises/test/README.md) | the board's pin numbering and `led.asm` |
 | `avr/vector_data_test.cpp` | **always** | The 26 vector numbers, and slot arithmetic |
-| `asm/button_test.cpp` | `drivers/source/button.asm` exists | The button driver, in the simulator |
-| `asm/app_test.cpp` | `drivers/app/` holds a program, **and** `button.asm` exists | The whole program, running on its own |
+| `asm/btn_test.cpp` | `drivers/source/btn.asm` exists | The button driver, in the simulator |
+| `asm/app_test.cpp` | `drivers/app/` holds a program, **and** `btn.asm` exists | The whole program, running on its own |
 
 `vector_data_test.cpp` is this suite's always-on file.
 
@@ -29,13 +29,13 @@ do here that breaks `shift_bits` or the LED driver fails in L03, where you are l
 Most of the button tests check behaviour you would think to check yourself. Two do not, and both
 catch code that assembles, runs, and looks entirely reasonable.
 
-**`Button.InterruptEnabledReportsTheTruth`** catches a `button_interrupt_enabled` that returns 1
+**`Btn.InterruptEnabledReportsTheTruth`** catches a `btn_interrupt_enabled` that returns 1
 and 0 the wrong way round. The branch is there and both constants are there and they are swapped.
-It is caught here, but it *surfaces* in `Button.ToggleAlternates`, because a toggle built on an
+It is caught here, but it *surfaces* in `Btn.ToggleAlternates`, because a toggle built on an
 inverted answer stops toggling and starts latching. A failure two steps from its cause is the
 expensive kind, which is why both tests exist rather than just the first.
 
-**`Button.DisablingOneButtonLeavesAnother`** catches a `button_disable_interrupt` that shifts by
+**`Btn.DisablingOneButtonLeavesAnother`** catches a `btn_disable_interrupt` that shifts by
 the wrong field of the structure. Reading offset 0, the pin register pointer, where offset 9, the
 pin number, belongs gives a shift count of `0x23`; that produces a mask of zero, which clears
 nothing at all. With one button, "nothing happened" and "the right thing happened" are
@@ -76,7 +76,7 @@ is [C.7](../../appendix/c_button_driver.md#c7-what-this-driver-does-not-do) arri
 `make measure` reaches into your program as well as your driver library:
 
 ```bash
-make measure IMAGE=app CALLS="led_init:0x0200:13 button_init:0x0240:12 --drive B4=0 isr_pcint0"
+make measure IMAGE=app CALLS="led_init:0x0200:13 btn_init:0x0240:12 --drive B4=0 isr_pcint0"
 ```
 
 `IMAGE=app` loads `app.hex`, because a handler lives in your program. `--drive B4=0` holds the

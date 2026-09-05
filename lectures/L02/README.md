@@ -65,7 +65,7 @@ The second is this lecture's cross-check, and the answer is no.
 * `DDRx` bit is 0 and `PORTx` bit is 1. Is that pin an input or an output, and what does it read?
 * You want to turn one LED on without disturbing the seven other bits of its port. Write the
   three-instruction sequence, and say why a single `sts` will not do.
-* A button is wired from a pin to ground with the internal pull-up on. `button_pressed` should
+* A button is wired from a pin to ground with the internal pull-up on. `btn_pressed` should
   return 1 when it is pressed. What does `PINx` read at that moment, and what must the driver do
   about it?
 * `rcall` pushes two bytes. Are they the byte address of the next instruction or its word

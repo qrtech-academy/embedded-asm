@@ -59,7 +59,7 @@ two words of flash on top of that.
 
 ## B.3 Registers, and the cost of a handler
 Beyond SREG, save every register your handler writes, including any that a subroutine you call
-will clobber. That last part catches people: a handler that calls `button_pressed` has to save
+will clobber. That last part catches people: a handler that calls `btn_pressed` has to save
 `r18`, `r19`, `r24` and `r25` even though it never names `r18` itself, because the subroutine does.
 
 Each `push` is 2 cycles and each `pop` is 2, so a saved register costs 4 cycles for the round trip

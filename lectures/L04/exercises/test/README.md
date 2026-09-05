@@ -17,7 +17,7 @@ L04 that breaks an earlier driver fails in L04, which is where you are looking.
 |---|---|---|
 | L01's files | see [L01's README](../../../L01/exercises/test/README.md) | the core's constants and `utils.asm` |
 | L02's files | see [L02's README](../../../L02/exercises/test/README.md) | the board's pin numbering and `led.asm` |
-| L03's files | see [L03's README](../../../L03/exercises/test/README.md) | the vector numbers and `button.asm` |
+| L03's files | see [L03's README](../../../L03/exercises/test/README.md) | the vector numbers and `btn.asm` |
 | `avr/struct_data_test.cpp` | **always** | The driver structure layouts |
 | `asm/led_array_test.cpp` | `drivers/source/led_array.asm` exists | The array driver, in the simulator |
 

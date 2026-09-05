@@ -1,16 +1,16 @@
 /**
- * @brief Tests for drivers/source/button.asm, run in the simulator.
+ * @brief Tests for drivers/source/btn.asm, run in the simulator.
  *
- *        Guarded by HAVE_BUTTON, which this suite's makefile defines when
- *        drivers/source/button.asm exists.
+ *        Guarded by HAVE_BTN, which this suite's makefile defines when
+ *        drivers/source/btn.asm exists.
  *
  *        Two of the tests here exist because the mistakes they catch are the ones this driver
  *        actually attracts, and both produce code that assembles, runs, and looks right:
- *        returning the wrong way round from `button_interrupt_enabled`, and reaching for the
- *        wrong field of the structure in `button_disable_interrupt`. Neither shows up until
+ *        returning the wrong way round from `btn_interrupt_enabled`, and reaching for the
+ *        wrong field of the structure in `btn_disable_interrupt`. Neither shows up until
  *        there are two buttons, or until somebody trusts the answer.
  */
-#if defined(HAVE_BUTTON) && defined(DRIVERS_HEX)
+#if defined(HAVE_BTN) && defined(DRIVERS_HEX)
 
 #include <cstdint>
 
@@ -88,7 +88,7 @@ std::uint8_t init(avrsim::Mcu& mcu, const std::uint8_t pin, const std::uint16_t 
 {
     mcu.setRegPair(24U, address);
     mcu.setReg(22U, pin);
-    mcu.call("button_init");
+    mcu.call("btn_init");
     return mcu.reg(24U);
 }
 } // namespace
@@ -96,12 +96,12 @@ std::uint8_t init(avrsim::Mcu& mcu, const std::uint8_t pin, const std::uint16_t 
 /**
  * @brief Every subroutine the specification names is defined and global.
  */
-TEST(Button, SubroutinesAreDefined)
+TEST(Btn, SubroutinesAreDefined)
 {
     avrsim::Mcu mcu{HexPath};
     for (const char* symbol :
-         {"button_init", "button_pressed", "button_enable_interrupt", "button_disable_interrupt",
-          "button_interrupt_enabled", "button_toggle_interrupt"})
+         {"btn_init", "btn_pressed", "btn_enable_interrupt", "btn_disable_interrupt",
+          "btn_interrupt_enabled", "btn_toggle_interrupt"})
     {
         EXPECT_TRUE(mcu.has(symbol));
     }
@@ -110,7 +110,7 @@ TEST(Button, SubroutinesAreDefined)
 /**
  * @brief A port B button gets port B's registers, PCMSK0 and PCIE0.
  */
-TEST(Button, InitBuildsThePortBStructure)
+TEST(Btn, InitBuildsThePortBStructure)
 {
     avrsim::Mcu mcu{HexPath};
     EXPECT_EQ(static_cast<unsigned>(init(mcu, 13U)), 0U);
@@ -131,7 +131,7 @@ TEST(Button, InitBuildsThePortBStructure)
  *        well, but there is no port C in between for this driver because Arduino digital pins
  *        do not reach it.
  */
-TEST(Button, InitBuildsThePortDStructure)
+TEST(Btn, InitBuildsThePortDStructure)
 {
     avrsim::Mcu mcu{HexPath};
     EXPECT_EQ(static_cast<unsigned>(init(mcu, 3U)), 0U);
@@ -148,7 +148,7 @@ TEST(Button, InitBuildsThePortDStructure)
  *        The opposite of what led_init does with the same two registers, which is the whole
  *        difference between the two drivers' first halves.
  */
-TEST(Button, InitMakesAnInputWithItsPullUpOn)
+TEST(Btn, InitMakesAnInputWithItsPullUpOn)
 {
     avrsim::Mcu mcu{HexPath};
     mcu.setData(DdrB, 0xFFU);
@@ -161,7 +161,7 @@ TEST(Button, InitMakesAnInputWithItsPullUpOn)
 /**
  * @brief Initialising one pin leaves the other seven alone.
  */
-TEST(Button, InitLeavesTheRestOfThePortAlone)
+TEST(Btn, InitLeavesTheRestOfThePortAlone)
 {
     avrsim::Mcu mcu{HexPath};
     mcu.setData(DdrB, 0x03U);
@@ -175,7 +175,7 @@ TEST(Button, InitLeavesTheRestOfThePortAlone)
 /**
  * @brief An out-of-range pin is refused before anything is written.
  */
-TEST(Button, InitRejectsPinsAboveThirteen)
+TEST(Btn, InitRejectsPinsAboveThirteen)
 {
     avrsim::Mcu mcu{HexPath};
     EXPECT_EQ(static_cast<unsigned>(init(mcu, 14U)), 1U);
@@ -188,28 +188,28 @@ TEST(Button, InitRejectsPinsAboveThirteen)
  *        The inversion the whole circuit forces. The pull-up holds the pin high when nothing is
  *        pressing it, so PINB reads 1 for "not pressed", and the driver has to say the opposite.
  */
-TEST(Button, PressedInvertsWhatThePinReads)
+TEST(Btn, PressedInvertsWhatThePinReads)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U);
 
     mcu.drive('B', 5U, true);
     mcu.run(4U);
-    EXPECT_EQ(static_cast<unsigned>(call(mcu, "button_pressed")), 0U);
+    EXPECT_EQ(static_cast<unsigned>(call(mcu, "btn_pressed")), 0U);
 
     mcu.drive('B', 5U, false);
     mcu.run(4U);
-    EXPECT_EQ(static_cast<unsigned>(call(mcu, "button_pressed")), 1U);
+    EXPECT_EQ(static_cast<unsigned>(call(mcu, "btn_pressed")), 1U);
 }
 
 /**
  * @brief Enabling sets one bit of PCICR and one bit of the port's mask register.
  */
-TEST(Button, EnableSetsBothRegisters)
+TEST(Btn, EnableSetsBothRegisters)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U);
-    call(mcu, "button_enable_interrupt");
+    call(mcu, "btn_enable_interrupt");
 
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcicr) & 0x01U), 0x01U);
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x20U), 0x20U);
@@ -223,7 +223,7 @@ TEST(Button, EnableSetsBothRegisters)
  *        drivers that do it. This one does not: `sei` belongs in your setup code, once, when
  *        everything else is configured.
  */
-TEST(Button, EnableDoesNotTouchTheGlobalInterruptFlag)
+TEST(Btn, EnableDoesNotTouchTheGlobalInterruptFlag)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U);
@@ -231,7 +231,7 @@ TEST(Button, EnableDoesNotTouchTheGlobalInterruptFlag)
     // Read through the accessor rather than from 0x5F: the simulator keeps the flags in its
     // own storage and only materialises the packed byte when a program reads it.
     const bool before = mcu.interruptsEnabled();
-    call(mcu, "button_enable_interrupt");
+    call(mcu, "btn_enable_interrupt");
     EXPECT_TRUE(before == mcu.interruptsEnabled());
 }
 
@@ -242,12 +242,12 @@ TEST(Button, EnableDoesNotTouchTheGlobalInterruptFlag)
  *        A driver that cleared PCICR here would silently switch off every other button sharing
  *        the port, which is a bug that cannot appear until there are two.
  */
-TEST(Button, DisableClearsOnlyTheMaskBit)
+TEST(Btn, DisableClearsOnlyTheMaskBit)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U);
-    call(mcu, "button_enable_interrupt");
-    call(mcu, "button_disable_interrupt");
+    call(mcu, "btn_enable_interrupt");
+    call(mcu, "btn_disable_interrupt");
 
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x20U), 0U);
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcicr) & 0x01U), 0x01U);
@@ -256,22 +256,22 @@ TEST(Button, DisableClearsOnlyTheMaskBit)
 /**
  * @brief Disabling one button leaves another button on the same port enabled.
  *
- *        This is the test that catches a `button_disable_interrupt` which shifts by the wrong
+ *        This is the test that catches a `btn_disable_interrupt` which shifts by the wrong
  *        field of the structure. Reading the pin *register* pointer where the pin *number*
  *        belongs gives a shift count of 0x23, which produces a mask of zero, which clears
  *        nothing at all; with one button, "nothing happened" and "the right thing happened" look
  *        identical from outside.
  */
-TEST(Button, DisablingOneButtonLeavesAnother)
+TEST(Btn, DisablingOneButtonLeavesAnother)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U, Button);
     init(mcu, 12U, Button2);
-    call(mcu, "button_enable_interrupt", Button);
-    call(mcu, "button_enable_interrupt", Button2);
+    call(mcu, "btn_enable_interrupt", Button);
+    call(mcu, "btn_enable_interrupt", Button2);
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x30U), 0x30U);
 
-    call(mcu, "button_disable_interrupt", Button);
+    call(mcu, "btn_disable_interrupt", Button);
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x20U), 0U);
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x10U), 0x10U);
 }
@@ -282,20 +282,20 @@ TEST(Button, DisablingOneButtonLeavesAnother)
  *        Stated that plainly because the classic mistake here is to return the two the wrong way
  *        round. Nothing about the code looks wrong: the branch is there, both constants are
  *        there, and they are simply swapped. Every caller then does the opposite of what it
- *        meant, including `button_toggle_interrupt`, which stops toggling and starts latching.
+ *        meant, including `btn_toggle_interrupt`, which stops toggling and starts latching.
  */
-TEST(Button, InterruptEnabledReportsTheTruth)
+TEST(Btn, InterruptEnabledReportsTheTruth)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U);
 
-    EXPECT_EQ(static_cast<unsigned>(call(mcu, "button_interrupt_enabled")), 0U);
+    EXPECT_EQ(static_cast<unsigned>(call(mcu, "btn_interrupt_enabled")), 0U);
 
-    call(mcu, "button_enable_interrupt");
-    EXPECT_EQ(static_cast<unsigned>(call(mcu, "button_interrupt_enabled")), 1U);
+    call(mcu, "btn_enable_interrupt");
+    EXPECT_EQ(static_cast<unsigned>(call(mcu, "btn_interrupt_enabled")), 1U);
 
-    call(mcu, "button_disable_interrupt");
-    EXPECT_EQ(static_cast<unsigned>(call(mcu, "button_interrupt_enabled")), 0U);
+    call(mcu, "btn_disable_interrupt");
+    EXPECT_EQ(static_cast<unsigned>(call(mcu, "btn_interrupt_enabled")), 0U);
 }
 
 /**
@@ -304,35 +304,35 @@ TEST(Button, InterruptEnabledReportsTheTruth)
  *        Built on interrupt_enabled, so an inverted answer there turns this into a subroutine
  *        that leaves the interrupt in the same state every time and is named toggle.
  */
-TEST(Button, ToggleAlternates)
+TEST(Btn, ToggleAlternates)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U);
 
-    call(mcu, "button_toggle_interrupt");
+    call(mcu, "btn_toggle_interrupt");
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x20U), 0x20U);
 
-    call(mcu, "button_toggle_interrupt");
+    call(mcu, "btn_toggle_interrupt");
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x20U), 0U);
 
-    call(mcu, "button_toggle_interrupt");
+    call(mcu, "btn_toggle_interrupt");
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x20U), 0x20U);
 }
 
 /**
  * @brief Two buttons on different ports use different mask registers and different enable bits.
  */
-TEST(Button, TwoButtonsOnDifferentPorts)
+TEST(Btn, TwoButtonsOnDifferentPorts)
 {
     avrsim::Mcu mcu{HexPath};
     init(mcu, 13U, Button);
     init(mcu, 3U, Button2);
-    call(mcu, "button_enable_interrupt", Button);
-    call(mcu, "button_enable_interrupt", Button2);
+    call(mcu, "btn_enable_interrupt", Button);
+    call(mcu, "btn_enable_interrupt", Button2);
 
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcicr) & 0x05U), 0x05U);
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk0) & 0x20U), 0x20U);
     EXPECT_EQ(static_cast<unsigned>(mcu.data(Pcmsk2) & 0x08U), 0x08U);
 }
 
-#endif // defined(HAVE_BUTTON) && defined(DRIVERS_HEX)
+#endif // defined(HAVE_BTN) && defined(DRIVERS_HEX)

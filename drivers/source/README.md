@@ -6,7 +6,7 @@ start running; there is nothing else to switch on.
 |---|---|---|
 | `utils.asm` | L01 | `shift_bits`, `shift_bits_inverted` |
 | `led.asm` | L02 | The LED driver |
-| `button.asm` | L03 | The button driver, and its pin change interrupt |
+| `btn.asm` | L03 | The button driver, and its pin change interrupt |
 | `led_array.asm` | L04 | The LED array driver, walking a run of LED structures |
 | `timer.asm` | L05 | The timer driver |
 | `watchdog.asm` | L06 | The watchdog driver |
