@@ -1,0 +1,6 @@
+[submodule "libs/test"]
+	path = libs/test
+	url = https://github.com/qrtech-academy/test-framework.git
+[submodule "tools/avrsim"]
+	path = tools/avrsim
+	url = https://github.com/qrtech-academy/avrsim.git
