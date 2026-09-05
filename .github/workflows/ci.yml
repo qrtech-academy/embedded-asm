@@ -1,0 +1,149 @@
+# Set pipeline name.
+name: CI
+
+# Set pipeline triggers. The weekly run is a canary for rot in the environment rather than in
+# the repo: an action that stops resolving, or a package that disappears. Every job pins its
+# runner image rather than taking ubuntu-latest, because the image is a toolchain input like any
+# other: avra, avr-gcc, avr-libc and libsimavr all come from the distribution, and the figure job
+# below compares PNGs byte for byte, which a font or library change would defeat.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+# Read-only is all any job here needs.
+permissions:
+  contents: read
+
+# A new push to a branch makes the run already in flight redundant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Fail on the first error in a multi-line run block, and on a failure inside a pipeline.
+defaults:
+  run:
+    shell: bash
+
+# Define pipeline jobs.
+jobs:
+  # Run the same scripts a reader runs locally. CI deliberately does not reimplement the build: a
+  # second copy of the discovery loop is a second thing to keep in step, and the one that is not
+  # exercised locally is the one that rots.
+  #
+  # Note what this job proves and what it does not. The repository ships no assembly bodies and no
+  # concrete C++ classes, so on a clean checkout `make build` finds nothing to assemble and says
+  # so, and `make test` runs each suite with its guarded cases compiled out. What is actually
+  # under test here is the harness, the stubs, the always-on cases, and the fact that all of it
+  # still compiles. That is worth having and it is not the same as testing a solution.
+  build:
+    name: Assemble, build the harness, and run the test suites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # Installed the way info/README.md tells a participant to install it, so CI runs the
+      # toolchain they will actually have rather than a separately published binary. An Ubuntu
+      # LTS holds its package versions, so this is pinned in practice without pinning a URL.
+      #
+      # Two of these matter for reasons that are not obvious.
+      #
+      # avra assembles the course. It is AVRASM2 rather than GNU `as`, which is what lets the
+      # same source a participant writes here open unchanged in Microchip Studio, and it brings
+      # m328Pdef.inc with it in /usr/share/avra.
+      #
+      # avr-gcc is kept for L06 alone, where C is linked against assembly. Nothing else in the
+      # course uses it, and a failure to install it takes out one lecture rather than all six.
+      #
+      # libsimavr-dev is the one people miss. The test suites do not run the simavr command;
+      # they link against the library and drive the core themselves.
+      - name: Install the AVR toolchain and simavr
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y avra gcc-avr avr-libc binutils-avr simavr libsimavr-dev
+          avra --version | head -n 1
+          avr-gcc --version | head -n 1
+          test -f /usr/share/avra/m328Pdef.inc
+
+      - name: Assemble the drivers and build the harness
+        run: make build
+
+      - name: Build and run every lecture test suite
+        run: make test
+
+  # Cheap checks that need no toolchain, so they report independently of the build.
+  lint:
+    name: Course conventions, links, line width, and formatting
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # links.sh walks every Markdown file in the tree, so it has to see the same tree the
+          # build job does or a green `make links` here means less than it appears to.
+          submodules: recursive
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      # One step, running the same target a reader runs, rather than four steps that have to be
+      # kept in step with the Makefile by hand. `make lint` names whichever check failed.
+      - name: Run every check that needs no toolchain
+        run: make lint
+
+  # The drawing geometry is exact and style.py quantizes deterministically, so a rebuild is
+  # byte-identical. That makes drift detectable: edit a figure module without re-committing its
+  # PNG, or hand-edit a generated PNG, and this is where it surfaces.
+  diagrams:
+    name: Committed figures match diagrams/build.py
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Guarded rather than assumed. Until the figure pipeline exists this job has nothing to do,
+      # and a job that skips out loud is worth more than one that has been commented out.
+      - name: Check whether the figure pipeline exists yet
+        id: pipeline
+        run: |
+          if [ -f diagrams/build.py ] && [ -f diagrams/requirements.txt ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "SKIP: diagrams/build.py or diagrams/requirements.txt does not exist yet."
+          fi
+
+      - name: Set up Python
+        if: steps.pipeline.outputs.exists == 'true'
+        uses: actions/setup-python@v5
+        with:
+          # Match the interpreter the committed figures were drawn with.
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: diagrams/requirements.txt
+
+      - name: Install the pinned drawing dependencies
+        if: steps.pipeline.outputs.exists == 'true'
+        run: pip install -r diagrams/requirements.txt
+
+      - name: Redraw every figure and diff it against what is committed
+        if: steps.pipeline.outputs.exists == 'true'
+        run: |
+          python diagrams/build.py
+          # -AN records intent-to-add, so a figure that was drawn but never committed shows up
+          # in the diff as a new file. Without it `git diff` sees only tracked files and a
+          # forgotten `git add` passes silently, which is the drift this job exists to catch.
+          git add -AN -- 'lectures/*/appendix/images' 'info/images'
+          git diff --exit-code -- 'lectures/*/appendix/images' 'info/images'
