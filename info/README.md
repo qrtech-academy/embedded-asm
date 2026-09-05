@@ -149,7 +149,7 @@ appendices say which.
 
 ```bash
 sudo apt -y update
-sudo apt -y install git make g++ avra binutils-avr simavr libsimavr-dev clang-format
+sudo apt -y install git make g++ avra binutils-avr simavr libsimavr-dev libelf-dev clang-format
 sudo apt -y install gcc-avr avr-libc                   # L06 only
 ```
 
@@ -166,6 +166,9 @@ sudo apt -y install gcc-avr avr-libc                   # L06 only
   suites do not run the `simavr` command; they link against `libsimavr` and drive the core
   directly, which is what lets a test call one of your subroutines and inspect the machine
   afterwards. `libsimavr-dev` is therefore required, not optional
+* **libelf-dev** - Not this course's dependency but the harness's: it links `-lelf` to read an
+  ELF's symbol table. Usually already installed, never installed on a clean machine, and its
+  absence appears as `cannot find -lelf` from the linker rather than as anything about AVR
 * **[clang-format](https://clang.llvm.org/docs/ClangFormat.html)** - Formats every C and C++
   source in the repository, the device headers and L06's capstone alike, against the
   `.clang-format` at the repository root. The assembly gets a lighter pass: trailing whitespace

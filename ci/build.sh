@@ -68,7 +68,7 @@ require() {
     command -v "$1" >/dev/null 2>&1 || {
         echo "error: $1 not found. Install the toolchain with:" >&2
         echo "  sudo apt -y install git make g++ avra binutils-avr simavr libsimavr-dev \\" >&2
-        echo "                      clang-format" >&2
+        echo "                      libelf-dev clang-format" >&2
         echo "  sudo apt -y install gcc-avr avr-libc      # L06 only" >&2
         exit 1
     }

@@ -65,10 +65,15 @@ jobs:
       #
       # libsimavr-dev is the one people miss. The test suites do not run the simavr command;
       # they link against the library and drive the core themselves.
+      #
+      # libelf-dev is the one *nobody* thinks of, because it is not this course's dependency at
+      # all: the harness links -lelf to read the symbol table out of an avr-gcc ELF. It is
+      # usually already present on a developer machine and never present on a clean runner, so
+      # this is the line that makes CI reproduce a fresh install rather than a lucky one.
       - name: Install the AVR toolchain and simavr
         run: |
           sudo apt-get update
-          sudo apt-get install -y avra gcc-avr avr-libc binutils-avr simavr libsimavr-dev
+          sudo apt-get install -y avra gcc-avr avr-libc binutils-avr simavr libsimavr-dev libelf-dev
           avra --version | head -n 1
           avr-gcc --version | head -n 1
           test -f /usr/share/avra/m328Pdef.inc
@@ -145,5 +150,10 @@ jobs:
           # -AN records intent-to-add, so a figure that was drawn but never committed shows up
           # in the diff as a new file. Without it `git diff` sees only tracked files and a
           # forgotten `git add` passes silently, which is the drift this job exists to catch.
-          git add -AN -- 'lectures/*/appendix/images' 'info/images'
-          git diff --exit-code -- 'lectures/*/appendix/images' 'info/images'
+          #
+          # The trailing /* is load-bearing. A pathspec containing a wildcard is matched against
+          # file paths rather than expanded as a directory prefix, so '.../images' matches a file
+          # called images, which does not exist, and git exits 128 with "did not match any files"
+          # before either command has looked at a figure.
+          git add -AN -- 'lectures/*/appendix/images/*'
+          git diff --exit-code -- 'lectures/*/appendix/images/*'

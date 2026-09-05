@@ -138,7 +138,7 @@ The toolchain, on WSL/Ubuntu:
 ```bash
 git clone --recursive https://github.com/qrtech-academy/embedded-asm.git
 sudo apt -y update
-sudo apt -y install git make g++ avra binutils-avr simavr libsimavr-dev clang-format
+sudo apt -y install git make g++ avra binutils-avr simavr libsimavr-dev libelf-dev clang-format
 sudo apt -y install gcc-avr avr-libc  # L06 only; see below.
 avra --version                        # 1.4.2 or newer.
 ```
@@ -153,6 +153,10 @@ follows this one uses the same two, which is most of why they are separate repos
 source you write here opens unchanged in Microchip Studio, so the register views and the
 single-stepping in that debugger apply to your own code rather than to a translation of it. The
 device definitions come with the package, in `/usr/share/avra/m328Pdef.inc`.
+
+`libelf-dev` is the one nothing tells you about. It is not this course's dependency: the harness
+links `-lelf` to read the symbol table out of an ELF, and the package is so often already present
+that its absence only shows up on a clean machine, as `cannot find -lelf` from the linker.
 
 `libsimavr-dev` is the one people miss. `simavr` alone gives you the command-line simulator, and
 the test suites do not use it; they link against the library and drive the core themselves, which

@@ -50,7 +50,7 @@ fi
 if ! printf 'int main(void){return 0;}\n' \
     | g++ -x c++ - -lsimavr -o /dev/null >/dev/null 2>&1; then
     echo "error: libsimavr not found. The suites link against the library, not the command." >&2
-    echo "       sudo apt -y install simavr libsimavr-dev" >&2
+    echo "       sudo apt -y install simavr libsimavr-dev libelf-dev" >&2
     exit 1
 fi
 
