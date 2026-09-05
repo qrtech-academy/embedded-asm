@@ -1,0 +1,14 @@
+# Pinned exactly: these figures are committed as PNGs, and an unpinned upgrade would
+# re-render them slightly differently and show up as a noisy binary diff. CI redraws every
+# figure and diffs it byte for byte, so a float that rounds differently is a failed build.
+#
+# schemdraw draws the two figures that are actually circuits; it does not pull matplotlib in
+# itself, because its default backend emits SVG. We render PNG, so matplotlib is a direct
+# dependency, and it is also what draws everything that is not a circuit: the register maps,
+# the memory maps, the bit fields, the timing diagrams and the flow charts.
+schemdraw==0.23
+matplotlib==3.11.1
+
+# Pulled in by matplotlib anyway, but imported directly by style.py to write the figures as
+# palette PNGs, so it is pinned here rather than left to matplotlib's resolver.
+pillow==12.3.0
