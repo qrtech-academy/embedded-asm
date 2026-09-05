@@ -149,12 +149,12 @@ def _draw_button(drawing, ax) -> None:
     shapes.dashed_box(ax, PIN_X - _BUTTON_CHIP_W, _CHIP_BOTTOM, PIN_X, _CHIP_TOP, "")
     style.text(ax, "ATmega328P", (PIN_X - _BUTTON_CHIP_W / 2, _CHIP_BOTTOM + 0.42),
                valign="bottom", size=style.SMALL_SIZE, color=style.MUTED_COLOR)
-    style.text(ax, "PB5", (PIN_X - 0.25, 0.28), halign="right", valign="bottom",
+    style.text(ax, "PB4", (PIN_X - 0.25, 0.28), halign="right", valign="bottom",
                size=style.SMALL_SIZE)
 
     # The one thing about this figure that a register description cannot tell you.
     shapes.callout(ax, (_CALLOUT_X, 1.35), (_PULLUP_X - 0.35, 1.8))
-    for index, line in enumerate(("switched on by", "PORTB bit 5 = 1", "with DDRB bit 5 = 0")):
+    for index, line in enumerate(("switched on by", "PORTB bit 4 = 1", "with DDRB bit 4 = 0")):
         style.text(ax, line, (_CALLOUT_X, 1.15 - index * 0.42), valign="top",
                    size=style.TINY_SIZE, color=style.ACCENT_COLOR)
 

@@ -85,7 +85,7 @@ INTERRUPT_SEQUENCE = style.Figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.7: a sixteen-bit read, torn.
+# L03 B.4: a sixteen-bit read, torn.
 #
 # The counter holds 0x00FF. The main loop reads the low byte, an interrupt increments the whole
 # counter to 0x0100, and then the main loop reads the high byte. The value it assembles is

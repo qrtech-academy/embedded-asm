@@ -1,5 +1,5 @@
 # The Device Constants
-Four C++ headers, and they are the only C++ this course ships. **They are ours, not yours**: no
+Three C++ headers, and they are the only C++ this course ships. **They are ours, not yours**: no
 exercise asks you to change them, and nothing here is a program.
 
 ```text
