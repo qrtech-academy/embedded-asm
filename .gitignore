@@ -1,0 +1,87 @@
+# Ignore everything without an extension, then selectively allow files and directories.
+*
+!*.*
+!*/
+
+# Don't ignore makefiles and license files.
+!makefile
+!Makefile
+!LICENSE
+
+# Nor the two submodules. A submodule is a gitlink rather than a directory as far as the index is
+# concerned, and neither path has an extension, so the `*` above would ignore both and
+# `git submodule add` would refuse them.
+!libs/test
+!tools/avrsim
+
+# Ignore the AVR toolchain's output. The rules above re-include anything with an extension, so
+# every generated file type has to be named here explicitly.
+*.elf
+*.hex
+*.eep
+*.bin
+*.map
+*.lst
+*.obj
+*.o
+*.d
+*.a
+*.su
+
+# Ignore the Python environment and bytecode used to redraw the diagrams.
+.venv/
+__pycache__/
+*.pyc
+
+# Ignore IDE and editor directories.
+.vscode/
+.vs/
+.idea/
+
+# Ignore temp/ and scratch trees.
+temp/
+scratch/
+
+# Ignore the implementation code, keeping the interfaces, stubs, tests and tools we ship.
+#
+# This course hands out contracts and tests, never bodies. The AVR subroutines under
+# drivers/source and the application program under drivers/app are the reader's to write.
+# Solving an exercise leaves that work sitting in the working tree where a single `git add -A`
+# would publish it, so the lines below make "not pushed" structural rather than a thing to
+# remember.
+#
+# Note that a gitignore `*` never crosses a `/`, so each of these is exactly one level deep and
+# needs no re-include. Already-tracked files are unaffected, so every README.md and every .inc
+# contract we ship inside these directories stays tracked either way. If some future lecture
+# genuinely needs to ship a body, `git add -f` overrides this.
+drivers/source/*.asm
+drivers/app/*.asm
+
+# L06 alone adds two more kinds of reader-written file in the same two directories: a GNU `as`
+# translation beside the AVRASM2 original, and the C program that calls it. Both are answers to
+# the capstone and both stay out of the repository for the same reason as the assembly.
+drivers/source/*.S
+drivers/app/*.S
+drivers/source/*.c
+drivers/app/*.c
+
+# The top-level units ci/build.sh generates, and everything else it puts beside them.
+drivers/build/
+
+# The worked solutions, which go out after their lecture rather than with it. Each one is
+# committed with `git add -f` on the day its lecture is given; until then it sits here in the
+# working tree, where the author can write it and `ci/links.sh` can check it, without a stray
+# `git add -A` publishing an answer to an exercise nobody has attempted yet.
+#
+# ci/check.sh knows about this: a lecture whose last appendix is the exercises is correct and
+# says "solutions not published", and one that ends with the solutions says so too.
+#
+# The exam papers' solutions are deliberately not here. They answer a paper taken after the
+# whole course rather than after a lecture, and exam/README.md is built around their being
+# available from the start.
+lectures/*/appendix/*_solutions.md
+
+# Ignore a reference implementation kept locally for validating the shipped test suites. Writing
+# one, running the suites against it and deleting it is how a suite gets checked before it goes
+# out; keeping it out of the repo is what stops it becoming the published answer.
+solutions/
