@@ -6,9 +6,6 @@
 #include <array>
 #include <cstdint>
 
-/**
- * @brief Pinned constants for the ATmega328P.
- */
 namespace avr::atmega328p
 {
 /** The Arduino Uno's crystal, and this course's assumption everywhere. */

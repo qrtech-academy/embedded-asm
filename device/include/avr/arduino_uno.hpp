@@ -7,9 +7,6 @@
 
 #include "avr/atmega328p.hpp"
 
-/**
- * @brief Pinned constants for the Arduino Uno board.
- */
 namespace avr::arduino_uno
 {
 /** The number of digital pins this course uses, numbered 0 upwards. */

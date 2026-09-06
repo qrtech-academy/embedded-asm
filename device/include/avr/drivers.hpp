@@ -5,9 +5,6 @@
 
 #include <cstdint>
 
-/**
- * @brief Field offsets and sizes of the structures the assembly drivers use.
- */
 namespace avr::drivers
 {
 /** Data space address of the LED's PINx pointer, low byte first. */
