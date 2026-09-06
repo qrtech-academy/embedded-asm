@@ -28,13 +28,30 @@ anchor_of() {
 checked=0
 broken=0
 
+# The submodules, read from .gitmodules rather than listed here. Each one is a separate
+# repository with its own conventions, its own CI and its own idea of a line length, so none of it
+# is ours to check; deriving the paths means adding a submodule needs no edit in this file.
+submodule_paths=()
+if [ -f .gitmodules ]; then
+    while read -r path; do
+        submodule_paths+=("$path")
+    done < <(sed -n 's/^[[:space:]]*path[[:space:]]*=[[:space:]]*//p' .gitmodules)
+fi
+
+# Whether a path lies inside a submodule, or inside .venv, which holds installed packages.
+not_ours() {
+    local candidate="$1" path
+    case "$candidate" in .venv/*) return 0 ;; esac
+    for path in "${submodule_paths[@]}"; do
+        case "$candidate" in "$path"/*) return 0 ;; esac
+    done
+    return 1
+}
+
 for file in **/*.md; do
-    # The submodule brings its own Markdown and .venv holds installed packages, so neither is
-    # ours to check. Without this, one `pip install` of a package whose README has a relative
-    # link breaks `make links` on a file this repository does not own.
-    case "$file" in
-        libs/*|.venv/*) continue ;;
-    esac
+    # Without this, one `pip install` of a package whose README has a relative link breaks
+    # `make links` on a file this repository does not own.
+    if not_ours "$file"; then continue; fi
 
     # Links are relative to the file that contains them, not to the repo root.
     dir="$(dirname "$file")"

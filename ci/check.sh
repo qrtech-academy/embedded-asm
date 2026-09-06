@@ -19,7 +19,25 @@
 #      in a comment would satisfy a looser pattern and then ignore what CI passes it.
 #   6. Every committed figure is referenced by some Markdown file, and every image reference
 #      carries alt text long enough to be a description rather than a filename. A figure nobody
-#      embeds is a figure nobody has looked at since it went stale.
+#      embeds is a figure nobody has looked at since it went stale. An image reference wrapped
+#      across two lines is reported as well, because the alt text rule scans a line at a time and
+#      a wrapped one is invisible to it: the figure counts as embedded and is never measured.
+#   7. Every GNU as token sits in a file that teaches that dialect, or names it on the same line
+#      while contrasting the two. This course assembles with avra, and the conversion from GNU as
+#      did not fail loudly: an lo8(RAMEND), a .bss, or a #include where .include is meant, left
+#      behind in the prose reads perfectly well, passes every other check in this file, and stops
+#      the reader at the first thing they type.
+#   8. The driver structures' offsets agree between drivers/include/*.inc and drivers.hpp,
+#      compared by name: LED_PIN_REG against LedPinReg, BTN_SIZE against BtnSize. Two copies of a
+#      set of numbers is exactly what drifts, and this pair drifts silently: the always-on suite
+#      checks only that the C++ copy is consistent with itself, so swapping two offsets in the
+#      .inc leaves every test passing and every test reading the wrong bytes.
+#   9. No subroutine name collides with an .equ constant. avra's symbol table is case-insensitive,
+#      so a subroutine timer_count and a constant TIMER_COUNT are one symbol, and a source
+#      defining both does not assemble. Both names are ours, they live in two different files, and
+#      nothing brings them together until the reader's assembler does.
+#  10. Every ## section is preceded by a --- rule, which is what makes a long appendix scannable.
+#      The one exception is a ## sitting directly under the document's own # title.
 #
 # Everything here is skipped loudly when the thing it checks does not exist yet, and says so by
 # name. A check that silently did not run must never read like one that passed.
@@ -296,6 +314,29 @@ else
     done
     [ "$unembedded" -eq 0 ] && checked_figures=${#figures[@]} \
         || skip "figures: $unembedded of ${#figures[@]} await the prose that will embed them."
+
+    # An image reference split across lines. Markdown renders one, and every check that looks
+    # for alt text scans a line at a time, so a wrapped one is invisible to the rule below: the
+    # figure still counts as embedded, and its alt text is never measured. Keeping the reference
+    # on one line is the convention, and ci/markdown.sh exempts such a line from the width rule
+    # precisely so that it can be.
+    split="$(awk '
+        /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
+        fence { next }
+        {
+            line = $0
+            while (match(line, /!\[/)) {
+                rest = substr(line, RSTART + 2)
+                if (index(rest, "]") == 0) { printf "%s:%d\n", FILENAME, FNR; break }
+                line = substr(rest, index(rest, "]") + 1)
+            }
+        }
+    ' "${markdown[@]}")"
+
+    if [ -n "$split" ]; then
+        printf '%s\n' "$split" >&2
+        fail "image reference split across lines; its alt text cannot be checked"
+    fi
 
     # Alt text, from every image reference in the course.
     short="$(awk '
