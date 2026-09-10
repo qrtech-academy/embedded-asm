@@ -1,7 +1,7 @@
 # Appendix E - Exercises
 
-> **How to check your work.** Exercises 5, 6 and 10 are checked by this lecture's test suite:
-> write the file at the path the specification gives, then run `make test`. The suite is
+> **How to check your work.** Exercise 5 is checked by this lecture's test suite: write the file
+> at the path the specification gives, then run `make test`. The suite is
 > cumulative, so it runs L01's tests too; if something you write here breaks `shift_bits`, this is
 > where it shows up. See [the suite's README](../exercises/test/README.md).
 >

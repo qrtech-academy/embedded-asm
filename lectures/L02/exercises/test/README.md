@@ -10,7 +10,7 @@ make clean      # remove the binary
 ---
 
 ## Cumulative, by reference rather than by copy
-This suite runs L01's four test files as well as its own. They are named in
+This suite runs two of L01's test files as well as its own. They are named in
 [the Makefile](./Makefile) where they live, in `lectures/L01/exercises/test`, rather than copied
 here: a copy would be a second thing to keep in step, and the copy is the one that goes stale.
 

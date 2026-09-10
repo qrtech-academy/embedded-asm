@@ -19,8 +19,8 @@ Worked in this order:
    what a floating input reads before you are told.
 2. **The pull-up, and the button that reads backwards.** A pressed button reads zero. That is not
    a convention anybody chose; it falls out of the circuit, and the circuit is drawn.
-3. **The translation.** Arduino pin 13 is bit 5 of port B. Derive the mapping rather than reading
-   the whole table rather than reading it.
+3. **The translation.** Arduino pin 13 is bit 5 of port B. Derive the mapping from the rule rather
+   than reading it off the table.
 4. **Subroutines, properly.** What `rcall` pushes, what `ret` does not undo, and the register
    contract that makes a subroutine safe to call from code you did not write.
 5. **The driver.** Five subroutines over a structure in SRAM, so that two LEDs can exist without

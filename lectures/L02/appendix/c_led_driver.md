@@ -2,8 +2,7 @@
 
 ## C.1 The task
 Write `drivers/source/led.asm`: five subroutines that drive one LED, told which LED to drive by a
-pointer to a structure in SRAM. And write `avr::port::PinMap`, the host-side twin of the
-translation those subroutines perform, so that you can check the translation without a device.
+pointer to a structure in SRAM.
 
 The driver is the first thing in this course that is a *component* rather than a routine. Nothing
 in it knows how many LEDs exist, which port they are on, or which bit; all of that is in the
