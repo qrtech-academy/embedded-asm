@@ -35,8 +35,8 @@ jobs:
   # second copy of the discovery loop is a second thing to keep in step, and the one that is not
   # exercised locally is the one that rots.
   #
-  # Note what this job proves and what it does not. The repository ships no assembly bodies and no
-  # concrete C++ classes, so on a clean checkout `make build` finds nothing to assemble and says
+  # Note what this job proves and what it does not. The repository ships no assembly bodies, so
+  # on a clean checkout `make build` finds nothing to assemble and says
   # so, and `make test` runs each suite with its guarded cases compiled out. What is actually
   # under test here is the harness, the stubs, the always-on cases, and the fact that all of it
   # still compiles. That is worth having and it is not the same as testing a solution.

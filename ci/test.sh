@@ -11,11 +11,10 @@
 # Running every suite against the current state of both is what catches regressions across
 # lectures: if the work added in L05 breaks a subroutine L02 built, L02's suite is what says so.
 #
-# A suite does not need either tree to exist. Tests for a class that has not been written are
-# compiled out by `#if __has_include`, and tests for an assembly subroutine that has not been
-# written are compiled out by a -DHAVE_<DRIVER> the suite's Makefile derives from what is
-# actually present in drivers/source. Both switch themselves on the moment the file appears,
-# with no list to edit anywhere.
+# A suite does not need drivers/ to hold anything yet. Tests for an assembly subroutine that has
+# not been written are compiled out by a -DHAVE_<DRIVER> the suite's Makefile derives from what
+# is actually present in drivers/source, and they switch themselves on the moment the file
+# appears, with no list to edit anywhere.
 #
 # What that leaves is the trap this script exists to avoid. `qacademy::test::runAllTests()`
 # returns false when no tests are registered, and prints nothing while doing it, so a suite whose

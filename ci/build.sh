@@ -4,7 +4,7 @@
 # assembly library the reader writes.
 #
 # Almost none of that exists on a fresh clone, and that is the normal case rather than an error.
-# Every line printed says which of the three it is talking about and what happened to it, because
+# Every line printed says which of the two it is talking about and what happened to it, because
 # a build that quietly skipped the only thing you changed must never read like one that passed.
 #
 # Two hex files come out of the assembly library, and they are built for different purposes:
@@ -14,8 +14,9 @@
 #                subroutine at a time. This is the hex most tests load.
 #
 #   app.hex      drivers/app/main.asm assembled with the same subroutines: a whole program, with
-#                a vector table and a main loop. L03's integration test loads this one and lets
-#                it run, which is the only way to exercise an interrupt.
+#                a vector table and a main loop. L01's program test and L03's integration test
+#                load this one and let it run, which is the only way to exercise a program or
+#                an interrupt.
 #
 # avra has no linker. It assembles one source file, so each of the two is built by generating a
 # top-level unit that .includes every source in turn and assembling that. The generated file is
@@ -150,7 +151,7 @@ if selected "drivers"; then
 
         app=(drivers/app/*.asm)
         if [ ${#app[@]} -eq 0 ]; then
-            skip "app" "no .asm files in drivers/app yet; L03's integration test needs one"
+            skip "app" "no .asm files in drivers/app yet; L01's program test and L03's integration test need one"
         else
             # The app goes first: it carries the vector table, and .org counts from the start of
             # the assembled unit. A library subroutine assembled ahead of it would push every

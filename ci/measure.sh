@@ -2,9 +2,8 @@
 #
 # Measure what one of your subroutines costs.
 #
-# The cross-check exercises ask you to predict a cycle count three ways and reconcile them: by
-# hand from the instruction set summary, and by measurement. This is the
-# measurement, and it is a tool rather than a test because what a cross-check needs is the number
+# The cross-check exercises ask you to predict a cycle count by hand, from the instruction set
+# summary, and reconcile it with a measurement. This is the measurement, and it is a tool rather than a test because what a cross-check needs is the number
 # itself rather than a verdict on it.
 #
 # Two forms, because most of the course needs the simple one and the drivers need the other.
