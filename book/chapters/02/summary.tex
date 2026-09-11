@@ -1,0 +1,50 @@
+% Section 2.5, from lectures/L02/README.md: what you should be able to do, questions to test
+% yourself, and the next lecture.
+
+\section{Review}
+\label{c2:sec:review}
+
+\needspace{6\baselineskip}
+\subsection*{What you should be able to do now}
+\begin{itemize}
+  \item Say what each of \code{DDRx}, \code{PORTx} and \code{PINx} does, and give the four states
+    of a pin.
+  \item Configure a pin as an input with its pull-up on, and say what it reads with nothing
+    connected.
+  \item Explain why writing a one to \code{PINx} toggles an output, and why writing a zero does
+    nothing.
+  \item Translate an Arduino pin number into a port, a bit, a mask and three register addresses.
+  \item Say exactly what \code{rcall} pushes, in what order, and what \code{ret} leaves behind.
+  \item Say which registers a subroutine may clobber, and what breaks when it clobbers the others.
+  \item Write a driver that reads, modifies and writes a port register rather than assigning to
+    it, and say what goes wrong when it assigns.
+  \item Predict how a driver's cost varies with the pin it was given, and check the prediction.
+\end{itemize}
+
+\needspace{6\baselineskip}
+\subsection*{Questions to test yourself}
+\begin{enumerate}
+  \item \code{DDRx} bit is 0 and \code{PORTx} bit is 1. Is that pin an input or an output, and
+    what does it read?
+  \item You want to turn one LED on without disturbing the seven other bits of its port. Write the
+    three-instruction sequence, and say why a single \code{sts} will not do.
+  \item A button is wired from a pin to ground with the internal pull-up on. \code{btn_pressed}
+    should return 1 when it is pressed. What does \code{PINx} read at that moment, and what must
+    the driver do about it?
+  \item \code{rcall} pushes two bytes. Are they the byte address of the next instruction or its
+    word address, and which byte goes at the higher address?
+  \item Your subroutine uses \code{r16} as scratch and does not restore it. Nothing in this book
+    breaks. Give the situation in which something does.
+  \item \code{led_on} costs 59 cycles for Arduino pin 13 and 29 for pin 8. Where do the 30 cycles
+    go, and what does that tell you about wiring an LED to a low-numbered pin?
+\end{enumerate}
+
+\needspace{6\baselineskip}
+\subsection*{Looking ahead}
+Chapter~3 is about code that runs when you are not looking:
+\begin{itemize}
+  \item The interrupt vector table, and why a vector holds a jump rather than a handler.
+  \item What the hardware saves when an interrupt fires, which is less than you would like.
+  \item Pin change interrupts, and one handler serving eight pins.
+  \item The button driver, and the first bug in this book that only appears sometimes.
+\end{itemize}

@@ -1,0 +1,172 @@
+% Section 2.2, from lectures/L02/appendix/b_subroutines.md.
+
+\section{Subroutines and the Calling Contract}
+\label{c2:sec:subroutines}
+
+\subsection{What \code{rcall} and \code{ret} actually do}
+\label{c2:sec:rcall}
+\code{rcall} does two things: it pushes the address of the next instruction onto the stack, and it
+jumps. \code{ret} pops that address back into the program counter. There is nothing else to it,
+and in particular there is no frame, no argument list and no register saving.
+
+\bookfigure{call_stack}{Four bytes of SRAM, three times: before \code{rcall} with the stack pointer
+at \code{RAMEND}, inside the subroutine with two bytes pushed and the pointer two lower, and after
+\code{ret} with the pointer back and the two bytes still there.}{c2:fig:stack}
+
+Three facts in that figure are worth reading slowly, because all three are commonly got backwards.
+
+\textbf{The address pushed is a word address.} The disassembler prints byte addresses, so an
+\code{rcall} at byte \code{0x0A} returns to byte \code{0x0C}, and what goes on the stack is
+\code{0x0006}. Halving it is not a detail you have to apply yourself anywhere in this book, but it
+explains a stack dump that otherwise looks like it contains the wrong numbers.
+
+\textbf{The low byte ends up at the higher address.} \code{SP} starts at \code{RAMEND} and
+decrements after each byte, and the low byte goes first, so \code{RAMEND} holds the low byte and
+\code{RAMEND - 1} the high one.
+
+\textbf{\code{ret} erases nothing.} It moves the stack pointer and leaves the bytes exactly where
+they were. Everything below \code{SP} is not ``empty''; it is stale, and the next \code{rcall} will
+overwrite it. A program that reads below its own stack pointer finds the ghosts of previous calls,
+which is occasionally a useful debugging trick and never a thing to rely on.
+
+\code{rcall} costs 3 cycles and \code{ret} costs 4, so the cheapest possible subroutine call costs
+7 cycles before the subroutine has done anything. That is not an argument against subroutines; it
+is the reason the cross-check in Exercise~\ref{c1:ex:crosscheck} came out the way it did.
+
+\subsection{The stack is one pointer and no protection}
+\label{c2:sec:stack}
+\code{SP} lives in \code{SPH:SPL}, at data space \code{0x5E:0x5D}, and it is the entire stack
+mechanism. Three different things use it and none of them coordinates with the others:
+\begin{itemize}
+  \item \code{rcall} and \code{ret}, for return addresses.
+  \item \code{push} and \code{pop}, for whatever you decide to save.
+  \item An interrupt, which pushes a return address whether you were expecting it or not
+    (Chapter~3).
+  \item Nothing else, because there are no local variables. If a subroutine needs memory, it
+    either uses registers or you allocate it somewhere yourself.
+\end{itemize}
+
+The stack grows \textbf{downwards}, from \code{RAMEND} towards your variables. Nothing checks. A
+subroutine that pushes without popping moves \code{SP} down permanently, and after enough calls the
+stack reaches whatever you put at the bottom of SRAM and quietly overwrites it. There is no fault,
+no message and no crash: just a variable that changes on its own.
+
+\textbf{Every \code{push} needs its \code{pop}, in the opposite order.} That is not advice, it is
+the only thing keeping \code{ret} pointed at a return address rather than at half of one.
+
+\subsection{The calling contract}
+\label{c2:sec:contract}
+The hardware has no opinion about registers. Every convention below is a convention, and the
+reason to follow it from the first chapter is that the C compiler follows it too, and in
+Chapter~6 the two of you will be calling each other.
+
+\bookfigure{register_contract}{The 32 registers coloured by role: \code{r18} to \code{r27} and
+\code{r30} to \code{r31} call-clobbered, \code{r2} to \code{r17} and \code{r28} to \code{r29}
+call-saved, with \code{r24} marked as the first argument and return value and \code{r22} as the
+second.}{c2:fig:contract}
+
+\begin{booktable}{@{}p{9.6em}L@{}}
+  \thead{Registers} & \thead{Rule} \\
+  \midrule
+  \code{r18}--\code{r27}, \code{r30}, \code{r31} & \textbf{Call-clobbered.} A subroutine may
+    destroy these. A caller that wanted one kept must save it itself. \\
+  \code{r2}--\code{r17}, \code{r28}, \code{r29} & \textbf{Call-saved.} A subroutine that uses one
+    must \code{push} it on entry and \code{pop} it before \code{ret}. \\
+  \code{r24}, or \code{r25:r24} & First argument, and where a byte or word result is returned. \\
+  \code{r22}, or \code{r23:r22} & Second argument. \\
+  \code{r1} & Assumed to hold zero by compiled C. If you change it, put it back. \\
+\end{booktable}
+
+So a driver subroutine taking a pointer and a pin number takes them in \code{r25:r24} and
+\code{r22}, and this is why \code{shift_bits} used \code{r18} and \code{r19} for scratch in
+Chapter~1 rather than \code{r16} and \code{r17}.
+
+\textbf{What breaks when you ignore it is nothing, for a while.} Inside this book's own library
+everything is called from code you wrote, so a subroutine that clobbers \code{r16} merely
+surprises you. The failure arrives in Chapter~6, when the caller is a C function that had a live
+variable in \code{r16}, and the symptom is a value changing across a function call for no reason
+visible in the source. That is among the least pleasant things this book can produce, and it is
+entirely avoidable now.
+
+\subsection{Calling a subroutine from a subroutine}
+\label{c2:sec:nested}
+The LED driver calls \code{shift_bits}, and \code{shift_bits} is a subroutine like any other, so
+two things follow that are worth stating before you write the code.
+
+\textbf{Anything call-clobbered is gone afterwards.} \code{shift_bits} destroys \code{r18},
+\code{r19} and \code{r24}. A driver that loaded a port register into \code{r18} and \emph{then}
+called \code{shift_bits} gets the shift result in \code{r18} and its port contents nowhere. So the
+read has to happen after the call, not before, and that ordering is a pinned detail of the
+specification (\secref{c2:sec:init}), not a matter of taste.
+
+\textbf{The stack grows by another two bytes.} A nested call is two return addresses deep. That is
+fine here and it is worth knowing the depth, because from Chapter~3 an interrupt can arrive on top
+of it and make it three.
+
+\textbf{What does survive}, in this library, is \code{Z}. \code{shift_bits} never touches
+\code{r30} or \code{r31}, so a driver can leave its structure pointer there across the call. Note
+that this is a fact about \code{shift_bits}, not a guarantee from the contract: \code{Z} is
+call-clobbered, so a stricter subroutine would be within its rights to destroy it. Relying on a
+specific routine's behaviour rather than on the contract is a decision, and it is one you should
+make on purpose and write down.
+
+\subsection{Passing a structure}
+\label{c2:sec:struct}
+The driver's five subroutines all operate on one LED, and there is more to an LED than fits in a
+register: three 16-bit addresses and a bit number, seven bytes in all.
+
+So the caller allocates those seven bytes somewhere in SRAM and passes the \textbf{address} in
+\code{r25:r24}. The subroutine copies that pair into \code{Z} with one \code{movw}, and then reads
+any field it wants with a single \code{ldd}, which takes a base register and a constant offset and
+costs the same two cycles as a plain \code{ld}. One instruction per field, and the offset is the
+name from \file{led.inc} rather than a number.
+
+That is what makes two LEDs possible. Nothing in the driver knows how many exist; each call is told
+which one to work on, and the answer lives in SRAM rather than in the code. The alternative, a
+driver that hard-codes \code{PORTB} and bit 5, is shorter and works exactly once.
+
+Where those seven bytes go is the caller's problem. In this chapter the tests place them at
+\code{0x0200}, which is inside SRAM and well clear of the stack. Chapter~4 is where allocating them
+properly becomes a topic in its own right.
+
+\textbf{One warning about a pattern you will find in AVR code elsewhere}, including in the material
+this book is based on: allocating driver structures at \code{RAMEND + 1}. On a device with external
+RAM that is where external RAM starts. An ATmega328P on an Arduino Uno has none, so
+\code{RAMEND + 1} is not memory at all, and storing there writes to nothing while reading gives
+nothing back. It looks deliberate and it is a bug.
+
+\subsection{Four instructions you need before Chapter~4 explains them}
+\label{c2:sec:fourinsns}
+The driver in \secref{c2:sec:driver} reaches into a structure, and reaching into a structure needs
+a pointer. Chapter~4 is where pointers are the subject; here is the minimum to write this
+chapter's code without waiting for it.
+
+\begin{booktable}{@{}p{7.4em}Lp{3.2em}@{}}
+  \thead{Instruction} & \thead{Does} & \thead{Cycles} \\
+  \midrule
+  \code{movw r30, r24} & Copies a register \textbf{pair} to a pair, so \code{r25:r24} into
+    \code{Z} in one go & 1 \\
+  \code{ldd r18, Z+6} & Loads the byte 6 past where \code{Z} points, \textbf{without moving
+    \code{Z}} & 2 \\
+  \code{std Z+6, r18} & Stores it back to the same place. The pointer comes first when storing
+    & 2 \\
+  \code{adiw r26, 1} & Adds a small constant to a register pair, here stepping \code{X} on by one
+    & 2 \\
+\end{booktable}
+
+Three limits go with them, and each is a real constraint on how you write the driver rather than a
+footnote:
+\begin{itemize}
+  \item \textbf{\code{ldd} and \code{std} take a constant offset, at most 63.} It is encoded in
+    the instruction, so it cannot come from a register. Every offset in \file{led.inc} is well
+    under 63, which is not an accident.
+  \item \textbf{\code{X} has no displacement form.} There is no \code{ldd r18, X+6}. So \code{Z} is
+    the pointer for reaching into a structure and \code{X} is the pointer for holding an address
+    you read out of one, which is exactly how the LED driver uses the two.
+  \item \textbf{\code{adiw} takes at most 63 and works only on \code{r24}, \code{r26}, \code{r28}
+    and \code{r30}}, the four pairs the instruction can name. Adding more than 63, or to any other
+    pair, takes \code{subi} and \code{sbci} with the negated value instead.
+\end{itemize}
+
+Why any of this is shaped the way it is, and what the other addressing modes are for, is
+\S4.1.

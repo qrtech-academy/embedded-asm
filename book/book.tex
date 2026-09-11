@@ -1,0 +1,27 @@
+% Embedded Assembly for the ATmega328P - the book.
+%
+% Built with LuaLaTeX; see the Makefile. The design is in asmbook.sty, the front matter in
+% front/, and each chapter in chapters/NN/, one file per section, mirroring the appendices of
+% the lecture it is typeset from.
+\documentclass[10pt, twoside, openright]{book}
+\usepackage{asmbook}
+
+\begin{document}
+
+\frontmatter
+\input{front/title}
+\tableofcontents
+\input{front/preface}
+
+\mainmatter
+\input{chapters/01/chapter}
+\input{chapters/02/chapter}
+\input{chapters/03/chapter}
+\input{chapters/04/chapter}
+\input{chapters/05/chapter}
+\input{chapters/06/chapter}
+
+\appendix
+\input{back/answers}
+
+\end{document}

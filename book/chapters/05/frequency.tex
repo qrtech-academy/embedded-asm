@@ -1,0 +1,172 @@
+% Section 5.2, from lectures/L05/appendix/b_frequency.md.
+
+\section{The Frequency You Asked For}
+\label{c5:sec:frequency}
+
+\subsection{The arithmetic}
+\label{c5:sec:arithmetic}
+Given a clock, a prescaler and a frequency you want, the number of ticks in one period is:
+\[
+  \text{ticks} = \frac{f_{\mathrm{clk}}}{N \times f}
+\]
+and the compare value is one less than that, because the counter starts at zero
+(\secref{c5:sec:ctc}).
+
+At 16\,MHz, 1\,kHz and a prescaler of 1: $16000000 / 1000 = 16000$ ticks, so
+\code{OCR1A = 15999}. That is exact, and $16000000 / 16000$ is exactly 1000\,Hz.
+
+Most frequencies are not like that.
+
+\subsection{Ticks are whole numbers}
+\label{c5:sec:whole}
+At 16\,MHz and a prescaler of 1, 3\,kHz needs $16000000 / 3000 = 5333.33$ ticks. The counter
+cannot count a third of a tick, so you get 5333 or 5334 and nothing in between.
+
+Take 5333, so \code{OCR1A = 5332}. The frequency you actually get is:
+\[
+  \frac{16000000}{1 \times 5333} = 3000.1875\ \text{Hz}
+\]
+which is \textbf{0.0063\% high}. That is the error, and it is not a rounding artefact of your
+arithmetic; it is the closest frequency the hardware can produce.
+
+\textbf{More ticks means less error.} The gap between two adjacent achievable frequencies is
+roughly $f / \text{ticks}$, so a period of 5333 ticks lands you within about 0.02\% and a period of
+83 ticks within about 1.2\%. That single sentence is the whole reason to prefer a small prescaler
+and a wide counter.
+
+\subsection{Choosing the prescaler}
+\label{c5:sec:choosing}
+The rule is: \textbf{the smallest prescaler whose tick count still fits in the counter.}
+
+Smallest, because a smaller prescaler means more ticks per period, and more ticks means finer
+resolution. You move up only when forced, and you are forced when the ticks no longer fit.
+
+Worked at 16\,MHz for 1\,kHz:
+
+\begin{narrowtable}{@{}rrcc@{}}
+  \thead{Prescaler} & \thead{Ticks} & \thead{Fits in 16 bits?} & \thead{Fits in 8 bits?} \\
+  \midrule
+  1 & 16000 & yes & no \\
+  8 & 2000 & yes & no \\
+  64 & 250 & yes & \textbf{yes} \\
+  256 & 62.5 & yes & yes \\
+  1024 & 15.6 & yes & yes \\
+\end{narrowtable}
+
+So Timer1 takes prescaler 1 with \code{OCR1A = 15999}, and Timer0 takes prescaler 64 with
+\code{OCR0A = 249}. \textbf{Same frequency, different numbers}, because the counters are different
+widths; both are exact here, and \secref{c5:sec:actual} says why.
+
+\subsection{What you actually get}
+\label{c5:sec:actual}
+Build this table before reading it. Every row is the same three steps, and doing them by hand
+seven times is what turns the rule into something you can apply to a frequency that is not here.
+
+\begin{narrowtable}{@{}lll@{}}
+  \thead{Wanted} & \thead{Timer1, 16-bit} & \thead{Timer0, 8-bit} \\
+  \midrule
+  1\,Hz & \code{/256}, \code{OCR = 62499}, exact & \textbf{not reachable} \\
+  2\,Hz & \code{/256}, \code{OCR = 31249}, exact & \textbf{not reachable} \\
+  10\,Hz & \code{/64}, \code{OCR = 24999}, exact & \textbf{not reachable} \\
+  1\,kHz & \code{/1}, \code{OCR = 15999}, exact & \code{/64}, \code{OCR = 249}, exact \\
+  3\,kHz & \code{/1}, \code{OCR = 5332}, $+0.0063\%$ & \code{/64}, \code{OCR = 82}, $+0.40\%$ \\
+  100\,kHz & \code{/1}, \code{OCR = 159}, exact & \code{/1}, \code{OCR = 159}, exact \\
+  3\,MHz & \code{/1}, \code{OCR = 4}, $+6.67\%$ & \code{/1}, \code{OCR = 4}, $+6.67\%$ \\
+\end{narrowtable}
+
+Three things in that table are worth stopping on.
+
+\textbf{3\,kHz misses by sixty-four times more on the 8-bit timer.} Same clock, same frequency, same
+arithmetic; the only difference is that one has 5333 ticks to work with and the other 83.
+
+\textbf{At 3\,MHz both are equally bad.} With only five ticks in a period, the width of the counter
+stops mattering: you are choosing between 3.2\,MHz and 2.67\,MHz and nothing between. High
+frequencies are where a timer stops being a precision instrument, whatever hardware you have.
+
+\textbf{Several rows are exact.} That is not an accident of these examples: 16\,MHz divided by a
+power of two is a whole number, and the prescalers are powers of two, so frequencies that divide
+the clock cleanly come out exactly. It is worth knowing which of your frequencies are the lucky
+ones.
+
+\subsection{Frequencies you cannot have}
+\label{c5:sec:cannot}
+Two limits, and they are limits of different kinds.
+
+\textbf{Too fast: above the clock.} The shortest period is one tick at a prescaler of 1, so the
+fastest compare rate is the clock itself, 16\,MHz. Anything above that is not ``approximated
+badly'', it is unreachable, and asking for it should be an error rather than a number.
+
+\textbf{Too slow: past a full counter at the largest prescaler.}
+\[
+  f_{\min} = \frac{f_{\mathrm{clk}}}{1024 \times \text{counter values}}
+\]
+At 16\,MHz that is \textbf{0.238\,Hz} for a 16-bit counter and \textbf{61.04\,Hz} for an 8-bit
+one.
+
+\textbf{So an 8-bit timer at 16\,MHz cannot produce 1\,Hz.} Not badly; at all. There is no
+prescaler that gets sixteen million cycles into 256 ticks, and no value of \code{OCR0A} helps,
+because the problem is that the counter runs out of values rather than that you chose the wrong
+one.
+
+That is a real constraint on real projects, and the answer to it is not a bigger register. It is to
+accept an interrupt rate the hardware \emph{can} reach and count those interrupts yourself, which is
+\secref{c5:sec:driver} and the reason this chapter has a driver at all.
+
+\subsection{Rounding is a decision}
+\label{c5:sec:rounding}
+$16000000 / (1 \times 3000)$ is 5333.33, and 5333 is nearer than 5334, so round to nearest.
+
+That is a choice, and it should be made deliberately rather than by whichever way integer division
+happens to truncate. Truncating always rounds down, so it always produces a period that is too
+short and a frequency that is too high, systematically, in every calculation you ever do with it.
+Rounding to nearest is wrong half the time by half as much.
+
+\textbf{Round to nearest, with a half rounding up}, and use that rule everywhere rather than
+choosing per calculation: one rule everywhere is one rule to check.
+
+And note what rounding does \emph{not} do. It does not make the answer exact, and it does not make
+the error small; it makes it as small as this prescaler allows. If that is not small enough, the
+fix is a different prescaler, a different timer, or a different clock crystal, and the exercises
+ask you to work out which.
+
+\subsection{Why the gaps alternate}
+\label{c5:sec:alternate}
+Everything above is about the period the timer produces. This is about the period you can
+\emph{observe}, and the two are not the same number even when the timer is exact.
+
+Ask for 3\,kHz, get \code{OCR1A = 5332} and a period of 5333 cycles, then measure the gaps between
+successive handler entries. They come out \textbf{5332, 5334, 5332, 5334} and not one of them is
+5333.
+
+Nothing is broken. The compare match really does happen every 5333 cycles; what is quantised is
+the \emph{handler's first instruction}, because an interrupt is taken at an instruction boundary
+and not in the middle of one (\secref{c3:sec:sequence}). A main loop of \code{rjmp} offers a
+boundary every two cycles. A period of 5333 is odd. So each match falls on the other side of a
+boundary from the last one, and the instant you can observe alternates by a cycle either way.
+
+Three things follow, and the third is the useful one.
+
+\textbf{The average is exact.} $(5332 + 5334) / 2 = 5333$. Over any even number of periods the
+total is right, so nothing drifts. Jitter and drift are different failures and this is only the
+first.
+
+\textbf{An even period does not alternate.} \code{OCR1A = 5331} gives a period of 5332 and four
+measured gaps of 5332. That is the prediction the explanation makes, and it is worth making before
+measuring rather than after.
+
+\textbf{And it is not the period alone that decides it.} The handler is what determines where the
+main loop resumes, and therefore where the next boundary falls, so its cost is a term too:
+
+\begin{aside}
+\textbf{The gaps alternate when $\text{period} + \text{handler round trip}$ is odd, and are steady
+when it is even.} Against a two-cycle main loop, nothing else about either number matters.
+\end{aside}
+
+Which means you can invert the whole table by adding a single \code{nop} to the handler. An even
+period that was steady starts alternating, and the odd one goes quiet. That is a strange result to
+arrive at from first principles and an obvious one afterwards, and it is the clearest example this
+book has of a measurement that is telling you about the code being interrupted rather than about
+the thing you were measuring.
+
+The exercises have you reproduce the first two, and the kernel course that follows this one meets
+the same rule again with the scheduler's own round trip added to the sum.

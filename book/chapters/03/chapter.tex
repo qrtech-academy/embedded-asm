@@ -1,0 +1,50 @@
+% Chapter 3, typeset from lectures/L03: the README is the opener and the closing summary, and
+% each appendix is a section, in the same order and with the same subsections.
+
+\chapter{Interrupts}
+\label{c3:ch:interrupts}
+
+{\large\itshape Code that runs when you are not looking, and everything that follows from
+that.\par}
+
+\begin{chapterbox}{In this chapter}
+\begin{itemize}
+  \item The interrupt vector table, and why a vector holds a jump rather than a handler.
+  \item What the hardware saves when an interrupt fires, which is less than you would like.
+  \item \code{reti} against \code{ret}, and the global interrupt enable that sits in
+    \code{SREG}.
+  \item Pin change interrupts: one vector per port, eight pins sharing it, and no way to tell
+    which.
+  \item The ISR contract: saving \code{SREG}, saving what you use, and why the order matters.
+  \item Atomicity: a sixteen-bit value that is briefly neither of its two correct values.
+  \item The button driver, and the first bug in this book that only appears sometimes.
+\end{itemize}
+\end{chapterbox}
+
+The chapter starts with the table, before any handler: twenty-six slots, two words each, and one
+of them is where the machine starts. Work out what \code{.org} number a PCINT0 handler needs
+before you are told. Then what happens, cycle by cycle: the hardware pushes a program counter and
+clears one flag, and everything else is yours to do. This is also where the simulator stops being
+the authority, which is worth knowing about before you trust a measurement.
+
+Then one vector, eight pins: pin change interrupts do not tell you which pin changed, or which way
+it went, and the driver has to work both out, and the second one it cannot. Then the shared
+variable, a counter written by a handler and read by the main loop, and the window in which it
+holds a value it never held. And finally the driver: six subroutines, a structure that is the
+LED's plus two fields, and a handler that composes it with Chapter~2's LED driver.
+
+Finish Chapter~2 first. The button driver's structure is the LED's with two fields added, and the
+handler calls \code{led_toggle}.
+
+Two predictions are worth making before anything runs:
+\begin{itemize}
+  \item how long your handler will keep interrupts disabled.
+  \item whether that number is the same each time it runs.
+\end{itemize}
+The second is this chapter's cross-check, and the answer is no, twice over.
+
+\input{chapters/03/interrupts}
+\input{chapters/03/contract}
+\input{chapters/03/button}
+\input{chapters/03/summary}
+\input{chapters/03/exercises}

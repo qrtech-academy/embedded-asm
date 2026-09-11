@@ -1,0 +1,163 @@
+% Section 2.3, from lectures/L02/appendix/c_led_driver.md.
+
+\section{The LED Driver}
+\label{c2:sec:driver}
+
+\subsection{The task}
+\label{c2:sec:task}
+Write \file{drivers/source/led.asm}: five subroutines that drive one LED, told which LED to drive
+by a pointer to a structure in SRAM.
+
+The driver is the first thing in this book that is a \emph{component} rather than a routine.
+Nothing in it knows how many LEDs exist, which port they are on, or which bit; all of that is in
+the structure it is handed. That is the whole design, and it is why the same five subroutines serve
+fourteen pins across two ports.
+
+Creating \file{drivers/source/led.asm} is all it takes to switch its tests on.
+
+\subsection{The structure}
+\label{c2:sec:layout}
+Seven bytes, laid out as \file{drivers/include/led.inc} declares. The offsets are given rather than
+chosen, because the test suite reads your structure out of SRAM at these offsets to check that
+\code{led_init} built it correctly.
+
+\begin{booktable}{@{}p{3.4em}p{8.6em}p{2.6em}L@{}}
+  \thead{Offset} & \thead{Field} & \thead{Size} & \thead{Holds} \\
+  \midrule
+  0 & \code{LED_PIN_REG} & 2 & Data space address of \code{PINx}, low byte first \\
+  2 & \code{LED_DIR_REG} & 2 & Data space address of \code{DDRx} \\
+  4 & \code{LED_PORT_REG} & 2 & Data space address of \code{PORTx} \\
+  6 & \code{LED_PIN} & 1 & Bit number within the port, 0 to 7 \\
+    & \code{LED_SIZE} & 7 & Total \\
+\end{booktable}
+
+Two things to notice. The order is the hardware's own, \code{PINx} then \code{DDRx} then
+\code{PORTx} one byte apart, so a driver that has the first can reach the others by adding one and
+two and never has to know which port it is on. And the last field is the \textbf{bit number}, not
+the Arduino pin number: the translation happens once, in \code{led_init}, and everything afterwards
+works in bits.
+
+Include it with \code{.include "led.inc"}; \code{make build} puts \file{drivers/include} on the
+include path.
+
+\subsection{\code{led_init}}
+\label{c2:sec:init}
+Fill in the structure and configure the hardware.
+
+\noindent\textbf{Arguments:} \code{r25:r24} is the address of the structure. \code{r22} is the
+Arduino pin number.\\
+\textbf{Returns:} \code{r24} is 0 on success, 1 if the pin number is not one this driver accepts.
+
+\medskip
+\noindent Write it in this order:
+\begin{enumerate}
+  \item \textbf{Copy the structure pointer into \code{Z}}, with \code{movw}. Everything after this
+    is \code{std} and \code{ldd} against \code{Z}, and \code{Z} survives the calls to
+    \code{shift_bits} (\secref{c2:sec:nested}).
+  \item \textbf{Validate and choose the port.} Below 8 is port D. Below 14 is port B, and
+    \textbf{subtract 8} from the pin number so that it becomes a bit number. Anything else returns
+    1 immediately, before writing anything at all.
+  \item \textbf{Store the bit number and the three addresses.} Load the port's \code{PINx} address
+    into \code{X}, store it at offset 0, \code{adiw X, 1} and store at offset 2, \code{adiw X, 1}
+    again and store at offset 4. Use \code{PINB} and \code{PIND} from \code{m328Pdef.inc}, adding
+    \code{0x20} to reach the data space (\secref{c1:sec:iowindow}).
+  \item \textbf{Make the pin an output.} Call \code{shift_bits} with the bit number, then read
+    \code{DDRx}, \code{or} the mask in, and write it back.
+  \item \textbf{Leave the LED off.} Call \code{shift_bits_inverted} with the bit number, then read
+    \code{PORTx}, \code{and} the mask in, and write it back.
+  \item \textbf{Return 0.}
+\end{enumerate}
+
+\subsubsection{Pinned details}
+\textbf{Validate before writing.} A rejected pin must leave the structure untouched, so the range
+check comes before the first \code{std}. A driver that fills the structure and then discovers the
+pin is invalid has already half-configured something.
+
+\textbf{Read the port register \emph{after} calling \code{shift_bits}, not before.}
+\code{shift_bits} destroys \code{r18}, \code{r19} and \code{r24}, so a driver that loads
+\code{DDRx} into \code{r18} and then calls it gets the mask in \code{r18} and the port contents
+nowhere. This is the single most likely way to get a driver that assembles, runs, and does
+nothing.
+
+\textbf{Read, modify, write.} Never assign to a port register (\secref{c2:sec:rmw}). Seven other
+pins share it.
+
+\textbf{Subtract 8 for port B.} Pin 8 is bit 0. Forgetting produces a mask of zero and an LED that
+never lights (\secref{c2:sec:pinmap}).
+
+\subsection{\code{led_on}, \code{led_off} and \code{led_toggle}}
+\label{c2:sec:onoff}
+All three take the structure address in \code{r25:r24} and return nothing.
+
+\textbf{\code{led_on}} reads the bit number from the structure, calls \code{shift_bits}, then reads
+\code{PORTx}, ORs the mask in, and writes it back.
+
+\textbf{\code{led_off}} is the same with \code{shift_bits_inverted} and an \code{and} instead of an
+\code{or}. Note that this is why \code{shift_bits_inverted} was written as its own loop in
+Chapter~1 rather than as \code{shift_bits} followed by \code{com}: it is called here on the hot
+path, and the extra \code{rcall}, \code{ret} and \code{com} would have cost more than the one
+\code{inc} per trip that it costs instead.
+
+\textbf{\code{led_toggle}} calls \code{shift_bits} and then writes the mask to \code{PINx} and
+nothing else (\secref{c2:sec:toggle}). No read, no OR, no write-back: one \code{st}. It is the
+shortest of the three and the only one that cannot be interrupted halfway.
+
+\subsection{\code{led_enabled}}
+\label{c2:sec:enabled}
+\noindent\textbf{Arguments:} \code{r25:r24} is the structure address.\\
+\textbf{Returns:} \code{r24} is 1 if the LED is on, 0 if it is off.
+
+\medskip
+Read \code{PINx}, not \code{PORTx}. For an output pin the two agree, so it makes no difference
+here, and it makes every difference the moment somebody hands this subroutine a pin that is an
+input: \code{PORTx} would report the pull-up setting and \code{PINx} reports the world.
+
+Mask the value with the bit, and return 1 if the result is non-zero. The natural way to write that
+ends with a conditional branch, and \textbf{that branch is why this subroutine costs one cycle more
+when the answer is yes} (\secref{c2:sec:cost}). Do not try to avoid it; notice it.
+
+\subsection{What it should cost}
+\label{c2:sec:cost}
+Every figure below is measured. You are asked to predict some of them in the exercises
+(\secref{c2:sec:exercises}) before you look.
+
+The shape of all five subroutines is the same: a fixed part that reads the structure and writes a
+register, plus one call to a shift routine whose cost depends on the bit number. So each of them
+costs $\text{slope} \times \text{bit} + \text{constant}$, and the slope is the interesting half.
+
+\begin{narrowtable}{@{}lcl@{}}
+  \thead{Subroutine} & \thead{Slope, cycles per bit} & \thead{Why} \\
+  \midrule
+  \code{led_on} & 6 & one \code{shift_bits} \\
+  \code{led_off} & 7 & one \code{shift_bits_inverted}, which has one more \code{inc} per trip \\
+  \code{led_toggle} & 6 & one \code{shift_bits} \\
+  \code{led_enabled} & 6 & one \code{shift_bits} \\
+  \code{led_init} & 13 & one of each \\
+\end{narrowtable}
+
+\textbf{The test suite checks two of these slopes, \code{led_on}'s and \code{led_off}'s, and none
+of the constants.} It also checks that \code{led_enabled} costs one cycle more when the answer is
+yes. That is a deliberate change from Chapter~1, where the specification gave \code{shift_bits} instruction by instruction and the test
+asserted its cost exactly. A driver is a bigger thing with more than one reasonable shape, and the
+slope is the part that follows from what it has to do rather than from how you chose to write it.
+
+The one absolute figure worth having in mind: on the reference implementation \code{led_on} costs
+\textbf{59 cycles for Arduino pin 13 and 29 for pin 8}, which is 3.7\,µs against 1.8\,µs at
+16\,MHz.
+
+\subsection{What this driver does not do}
+\label{c2:sec:notdo}
+\textbf{It does not debounce.} Nothing here is about buttons yet, but the same will be true of the
+button driver in Chapter~3, and it is worth saying once: a driver that reports the state of a pin
+reports the state of the pin, bounces included.
+
+\textbf{It does not remember anything.} \code{led_enabled} reads the hardware rather than a flag,
+which means it stays right if something else changes the port behind its back, and it also means
+it cannot tell you whether the LED is \emph{meant} to be on.
+
+\textbf{It does not check that the pin is an output.} \code{led_on} on a pin that something else
+has made an input would enable a pull-up rather than lighting anything. There is no type system
+here; the structure is seven bytes and any subroutine will operate on any seven bytes it is given.
+
+\textbf{It does not protect one LED from another.} Two structures pointing at the same bit of the
+same port both work, and they fight. Nothing detects it.

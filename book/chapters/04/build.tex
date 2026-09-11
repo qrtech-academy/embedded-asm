@@ -1,0 +1,102 @@
+% Section 4.4, from lectures/L04/appendix/d_what_to_build.md.
+
+\section{What to Build}
+\label{c4:sec:build}
+
+\subsection{The task}
+\label{c4:sec:task}
+Write \file{drivers/source/led_array.asm}, four subroutines that treat a run of LED structures as
+one thing.
+
+It is not large. What it is for is the first of the two skills this chapter is about, walking
+memory at a stride that is not one. The second, knowing in advance that two things sharing 2048
+bytes will not meet, is arithmetic you do on paper (\secref{c4:sec:stack}) and then check in the
+simulator (\secref{c4:sec:exercises}).
+
+Creating \file{drivers/source/led_array.asm} is all it takes to switch its tests on.
+
+\subsection{The array}
+\label{c4:sec:array}
+An array of \code{count} LED structures, laid out end to end with no gaps, starting at an address
+the caller chose. Entry $n$ therefore begins $n \times$ \code{LED_SIZE} bytes after the base, and
+\code{LED_SIZE} is 7 (\file{led.inc}).
+
+Nothing marks the end. The count is passed in, and it is the only thing that stops a walk.
+
+\subsection{\code{led_array_init}}
+\label{c4:sec:init}
+\noindent\textbf{Arguments:} \code{r25:r24} the base address, \code{r22} the count, \code{r20} the
+Arduino pin of the first LED.\\
+\textbf{Returns:} \code{r24} is 0 on success, 1 if refused.
+
+\medskip
+Initialise \code{count} LEDs on \textbf{consecutive} Arduino pins, starting at the given one.
+Entry 0 gets the first pin, entry 1 the next, and so on.
+
+\noindent Write it like this:
+\begin{enumerate}
+  \item \textbf{Refuse an array that would run off the end of the pin numbering.} The last LED
+    would be on pin \code{first + count - 1}, and there is no pin 14. Check this once, before
+    initialising anything, rather than discovering it partway through and leaving half an array
+    behind.
+  \item \textbf{A count of zero succeeds and does nothing.} Test the count before the first
+    iteration.
+  \item \textbf{For each entry}, call \code{led_init} with the entry's address and the entry's pin
+    number, then advance the pointer by \code{LED_SIZE} and the pin number by one.
+\end{enumerate}
+
+\subsubsection{Details that are pinned rather than up to you}
+\textbf{\code{led_init} clobbers the argument registers, and it clobbers \code{Z}.} Your loop
+variables cannot live in \code{r18} to \code{r27} or in \code{r30}/\code{r31} across the call, and
+the pointer you are walking is in \code{r25:r24} precisely because that is where \code{led_init}
+wants it. Pushing what you need before the call and popping it after is the straightforward answer,
+and it costs four cycles per register per iteration; the alternative is to keep the loop state in
+call-saved registers and pay to save those once, which is cheaper for a long array and more code.
+Either is fine. Choosing without noticing there was a choice is not.
+
+\textbf{Advance by \code{LED_SIZE}, taken from the include file.} Not by 7 written out, and
+certainly not by 2 or 6, which are the sizes of the fields rather than of the structure. A stride of
+6 puts each entry one byte on top of the last, and everything still looks like a structure.
+
+\textbf{Do not call \code{led_init} for entries beyond the count.} The byte after the last structure
+is an ordinary byte and will be initialised as happily as any other.
+
+\textbf{Check yourself:} six LEDs from Arduino pin 8 gives entries whose pin fields are 0, 1, 2, 3,
+4 and 5, all on port B, at addresses seven apart. Four LEDs from pin 6 straddle the ports: two on
+port D at bits 6 and 7, then two on port B at bits 0 and 1.
+
+\subsection{\code{led_array_all_on}, \code{led_array_all_off} and \code{led_array_toggle_at}}
+\label{c4:sec:walks}
+\textbf{\code{led_array_all_on}} and \textbf{\code{led_array_all_off}} take the base in
+\code{r25:r24} and the count in \code{r22}, and call \code{led_on} or \code{led_off} for every
+entry. They return nothing.
+
+\textbf{\code{led_array_toggle_at}} takes the base in \code{r25:r24}, the count in \code{r22} and
+an index in \code{r20}. It toggles that one entry and returns 0, or returns 1 without touching
+anything if the index is not less than the count.
+
+\subsubsection{Details that are pinned rather than up to you}
+\textbf{The bound is \code{index < count}, and the interesting value is \code{index == count}.}
+That is the first address past the end of the array; it looks like a structure, the driver will
+accept it, and nothing else will notice. An implementation that checks \code{index <= count} passes
+every test with a small index in it.
+
+\textbf{Two of these three walk and one indexes.} Walking is a loop and an \code{adiw}; indexing is
+a multiply, or a walk of \code{index} steps. Either is acceptable; if you use \code{mul}, clear
+\code{r1} afterwards (\secref{c4:sec:stride}).
+
+\textbf{Test the count at the top.} A count of zero means do nothing, for all three.
+
+\subsection{What none of this does}
+\label{c4:sec:notdo}
+\textbf{It does not stop you.} The arithmetic in \secref{c4:sec:stack} produces a number and
+nothing else. Nothing on the device checks your assembly against it, and a program whose stack
+collides with its variables will assemble and run exactly as happily as one whose does not.
+
+\textbf{It does not know about anything you did not count.} A subroutine that pushes two registers
+adds two bytes that your worst case will not include unless you put them there. A bound is only as
+good as the depth you hand it, which is the usual bargain and is why the exercises ask you to
+measure as well.
+
+\textbf{And the measurement does not know about the interrupt that has not arrived yet}, which is
+why neither on its own is enough.

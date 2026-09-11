@@ -1,0 +1,137 @@
+% Section 5.3, from lectures/L05/appendix/c_what_to_build.md.
+
+\section{What to Build}
+\label{c5:sec:build}
+
+\subsection{The task}
+\label{c5:sec:task}
+Two things: \file{drivers/source/timer.asm}, which counts interrupts so that one hardware timer can
+drive several rates; and the hardware setup in \file{drivers/app/main.asm}, which uses the
+prescaler and compare value you worked out by hand in \secref{c5:sec:frequency}.
+
+\subsection{The structure the driver uses}
+\label{c5:sec:layout}
+Five bytes, as \file{drivers/include/timer.inc} declares.
+
+\begin{booktable}{@{}p{3.4em}p{9em}p{2.6em}L@{}}
+  \thead{Offset} & \thead{Field} & \thead{Size} & \thead{Holds} \\
+  \midrule
+  0 & \code{TIMER_TARGET} & 2 & Interrupts that make one event. Never 0 \\
+  2 & \code{TIMER_COUNT} & 2 & Interrupts counted since the last event \\
+  4 & \code{TIMER_RUNNING} & 1 & 0 or 1 \\
+    & \code{TIMER_SIZE} & 5 & Total \\
+\end{booktable}
+
+\textbf{Both counters are sixteen bits}, because a target of 1000 is one second at a 1\,kHz
+interrupt and that is an ordinary thing to want. A driver that keeps them in one byte works
+perfectly up to 255 and then silently does something else.
+
+\subsection{The idea: count the interrupts}
+\label{c5:sec:idea}
+An 8-bit timer at 16\,MHz cannot reach 1\,Hz (\secref{c5:sec:cannot}), and even a 16-bit one has to
+use its largest prescaler and most of its range to get near it. Meanwhile a program usually wants
+several different rates at once, and there are only three timers.
+
+Both problems have the same answer. Set the hardware to a rate it reaches comfortably and
+accurately, say 1\,kHz, and then \textbf{count those interrupts in software}. A target of 1000
+gives an event every second; a target of 500 gives two a second; and both can exist at the same
+time, from the same interrupt, because each has its own structure.
+
+What you give up is resolution: every event lands on a 1\,kHz boundary, so the finest interval you
+can express is one millisecond. What you get is any multiple of that, from one millisecond to just
+over a minute, from one timer, with no extra hardware.
+
+\subsection{What to build in assembly: \code{drivers/source/timer.asm}}
+\label{c5:sec:driver}
+Five subroutines.
+
+\textbf{\code{timer_init}} takes the structure address in \code{r25:r24} and the target in
+\code{r23:r22}. It stores the target, clears the count, leaves the timer \textbf{off}, and returns 0
+in \code{r24}; or returns 1 without storing anything if the target is zero.
+
+\textbf{\code{timer_on}} and \textbf{\code{timer_off}} take the structure address and switch it.
+\code{timer_off} also \textbf{clears the count}.
+
+\textbf{\code{timer_enabled}} returns 1 if it is on, else 0.
+
+\textbf{\code{timer_tick}} takes the structure address, and is what your compare-match handler
+calls. If the timer is off it does nothing and returns 0. Otherwise it adds one to the count; if the
+count has reached the target it clears the count and returns 1, and otherwise it stores the count
+and returns 0.
+
+\subsubsection{Details that are pinned rather than up to you}
+\textbf{A target of zero is refused.} A count that starts at zero and is compared against zero
+either fires on every interrupt or never fires, depending on where in the subroutine you compare,
+and neither is obviously wrong from outside. Reject the value instead of picking one.
+
+\textbf{\code{timer_init} leaves it off.} A timer that starts running the moment it is created
+begins counting before the rest of the program is ready, and the first event arrives at a moment
+nobody chose.
+
+\textbf{\code{timer_off} clears the count}, so switching a timer off and on again starts a whole
+period rather than finishing the one that was interrupted.
+
+\textbf{Fire on the target-th call, not the one before or after.} With a target of 4, the fourth
+call returns 1 and the three before it return 0. Increment first, then compare; the other order is
+off by one, and shows up as every period one interrupt long, a rate 20\% slow at a target of 4 and
+0.1\% slow at 1000, rather than as anything obviously broken.
+
+\textbf{Clear the count \emph{after} firing, to zero and not to one.} Otherwise every period after
+the first is one interrupt short.
+
+\textbf{Compare both bytes.} \code{cp} then \code{cpc} on the high bytes, and note the order: the
+low bytes are compared first, and the carry from that comparison feeds the second. A driver that
+compares only the low byte fires 256 times too often for any target above 255, and passes every
+test with a small target in it.
+
+\textbf{There is no \code{adiw} for \code{r19:r18}.} It only works on \code{r24}, \code{r26},
+\code{r28} and \code{r30} (\secref{c4:sec:cost}). Adding one to an ordinary pair is \code{subi}
+with \code{low(-1)} and \code{sbci} with \code{high(-1)}, which is subtracting minus one, and reads
+strangely exactly once.
+
+\subsection{The hardware setup}
+\label{c5:sec:setup}
+In \file{drivers/app/main.asm}, add to your existing setup:
+\begin{enumerate}
+  \item \textbf{Zero \code{TCCR1A}.} No pin output, no waveform generation bits from this half.
+  \item \textbf{Write \code{OCR1A}}, high byte first (\secref{c5:sec:registers}).
+  \item \textbf{Set \code{OCIE1A} in \code{TIMSK1}.}
+  \item \textbf{Set \code{TCCR1B}} to \code{WGM12} for CTC plus the clock select bits for your
+    prescaler.
+  \item Leave \code{sei} where it is, at the end, once.
+\end{enumerate}
+
+\textbf{\code{TCCR1B} goes last, and the order is the point.} Writing the clock select bits is what
+starts the counter (\secref{c5:sec:registers}), so anything written after it is written to a timer
+that is already running. Set the compare value first and the timer counts from zero to a value that
+was already there; set it afterwards and the first period is whatever \code{OCR1A} happened to hold,
+which after reset is \code{0x0000}: a compare match on every tick until your write lands.
+
+And add a handler at the \code{TIMER1_COMPA} vector, which is vector 11, so \code{.org 0x16}, or
+\code{.org OC1Aaddr}, which is the same number out of the device file (\secref{c3:sec:table}). It
+has the same shape as Chapter~3's: save what you use and \code{SREG}, call \code{timer_tick} on each
+software timer, act on the ones that returned 1, restore, \code{reti}.
+
+\textbf{Blink a second LED, not Chapter~3's.} Put it on Arduino pin 8 and leave the one on pin 13 to
+the button: Chapter~3's integration tests run in this suite too, and one of them watches pin 13 for
+eight million cycles and expects nothing to change it.
+
+\textbf{Use the numbers you worked out.} Work out the prescaler and compare value for 1\,kHz on a
+16-bit counter by hand, by the rule in \secref{c5:sec:choosing}, and write those in.
+
+\textbf{All four registers need \code{lds} and \code{sts}.} They are in extended I/O and
+\code{out} cannot reach them.
+
+\subsection{What this does not do}
+\label{c5:sec:notdo}
+\textbf{It does not make the handler punctual}, only regular. The compare match is exact to the
+cycle; when your code actually runs depends on what it interrupted (the cross-check in
+Exercise~\ref{c5:ex:crosscheck}).
+
+\textbf{It does not survive a handler that is too slow.} If your handler takes longer than the
+period, the next match arrives while you are still in the previous one, and the flag is a single
+bit: you lose interrupts, silently, and the software timers run slow. At 1\,kHz you have 16000
+cycles, which is a great deal; at 100\,kHz you have 160, which is not.
+
+\textbf{And it does not know about the hardware at all.} \code{timer_tick} counts calls. Calling it
+twice in one interrupt, or forgetting to call it, changes the rate and nothing detects either.

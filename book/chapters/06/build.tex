@@ -1,0 +1,97 @@
+% Section 6.4, from lectures/L06/appendix/d_what_to_build.md.
+
+\section{What to Build}
+\label{c6:sec:build}
+
+\subsection{The task}
+\label{c6:sec:task}
+Two things, and the second of them is the book's capstone: \file{drivers/source/watchdog.asm},
+which writes the watchdog's control byte correctly; and a C program that calls the assembly you
+wrote in Chapter~1, unchanged.
+
+\subsection{What to build in assembly: \code{drivers/source/watchdog.asm}}
+\label{c6:sec:driver}
+Four subroutines.
+
+\textbf{\code{watchdog_init}} takes the control byte in \code{r24} and performs the timed sequence
+(\secref{c6:sec:timed}):
+\begin{enumerate}
+  \item Save \code{SREG}, then \code{cli}.
+  \item \code{wdr}, so the timeout starts from now rather than from wherever the counter had got to.
+  \item Clear \code{WDRF} in \code{MCUSR}, leaving the other three cause bits alone.
+  \item Write \code{WDCE} and \code{WDE} together into \code{WDTCSR}.
+  \item Write \code{r24} into \code{WDTCSR}.
+  \item Restore \code{SREG}.
+\end{enumerate}
+
+\textbf{\code{watchdog_reset}} is a single \code{wdr} and a \code{ret}. It runs in your main loop,
+thousands of times, and must do exactly that one thing.
+
+\textbf{\code{watchdog_disable}} is \code{watchdog_init} with a written value of zero.
+
+\textbf{\code{watchdog_caused_reset}} returns 1 in \code{r24} if \code{WDRF} was set in
+\code{MCUSR}, else 0, and clears \code{WDRF} either way, leaving the other cause bits alone.
+
+\subsubsection{Details that are pinned rather than up to you}
+\textbf{Steps 4 and 5 must be adjacent.} Two \code{sts} instructions, nothing between them. Two
+cycles each, so they fit the four-cycle window with one cycle to spare; one single-cycle
+instruction between them still fits, and anything more leaves \code{WDTCSR} in system reset mode,
+holding \code{0x08} on a device fresh from reset (\secref{c6:sec:timed}).
+
+\textbf{Save and restore \code{SREG}, do not just \code{cli} and \code{sei}.} The sequence must run
+with interrupts off, but leaving them off on the way out is a bug: every other interrupt in the
+program quietly stops, at a moment determined by whoever last configured the watchdog. This is the
+same discipline as Chapter~3's atomic read (\secref{c3:sec:shared}).
+
+\textbf{Clear \code{WDRF} before the window, not after.} The hardware refuses to clear \code{WDE}
+while \code{WDRF} is set, so a driver that clears it afterwards works the first time and cannot
+disable the watchdog after a watchdog reset, which is exactly when it matters.
+
+\textbf{\code{MCUSR} is inside the I/O window, so \code{in} and \code{out} reach it}; \code{WDTCSR}
+is not, and needs \code{lds} and \code{sts}. The two numbers are the usual pair: \code{MCUSR} is
+data space \code{0x54} and I/O \code{0x34}, and the name in \file{m328Pdef.inc} is the I/O one, so
+\code{in r24, MCUSR} is what you write (\secref{c1:sec:iowindow}). \code{WDTCSR} is \code{0x60} in
+both, because above the window there is only one. Two registers, two addressings, one subroutine.
+
+\textbf{Leave the other reset causes alone.} \code{MCUSR} records four different reasons in four
+bits, and clearing all of them because you cared about one destroys information nothing can
+recover.
+
+\subsection{The capstone: call it from C}
+\label{c6:sec:capstone}
+Write \file{drivers/app/main.c}, a C program that calls \code{shift_bits} from Chapter~1 and uses
+the result.
+
+\textbf{Change nothing in \file{utils.asm}.} That is the point. It has followed the calling
+convention since Chapter~1, so a C prototype is the whole of the interface
+(\secref{c6:sec:asmfromc}).
+
+Build it with a normal \code{avr-gcc} invocation rather than the book's usual one: a C program
+needs the startup code that sets the stack pointer, zeroes \code{.bss} and \code{r1}, and calls
+\code{main}, all the things your \file{main.asm} did by hand.
+
+Then generate the compiler's own version of the same job with \code{-S}, and compare it against
+what you wrote (the cross-check, Exercise~\ref{c6:ex:crosscheck}).
+
+\subsubsection{Details that are pinned rather than up to you}
+\textbf{The prototype's types must match.} \code{uint8_t shift_bits(uint8_t)}. Declaring the
+argument wider passes it in \code{r25:r24} and your subroutine reads only \code{r24}, which changes
+nothing you can see and is still wrong; declaring the result wider as well reads back an
+\code{r25} your subroutine never wrote (\secref{c6:sec:asmfromc}).
+
+\textbf{Do not add \code{extern "C"}.} This is C, not C++, and there is no name mangling to
+suppress.
+
+\subsection{What none of this does}
+\label{c6:sec:notdo}
+\textbf{The driver does not choose the byte.} It writes whatever \code{r24} holds. Working that
+byte out from \secref{c6:sec:registers} is your program's job, and so is deciding to write it at
+all.
+
+\textbf{The driver does not decide when to pet.} Where \code{watchdog_reset} is called from is the
+entire difference between a watchdog that works and one that is decoration
+(\secref{c6:sec:detects}), and nothing in the driver can help.
+
+\textbf{And none of it is tested against sleep.} The interaction between sleep modes and wake
+sources is specified by the datasheet and approximated by the simulator, so this book teaches it
+and does not check it (\secref{c6:sec:sleepnot}).

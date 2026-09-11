@@ -1,0 +1,51 @@
+% Section 4.5, from lectures/L04/README.md: what you should be able to do, questions to test
+% yourself, and the next lecture.
+
+\section{Review}
+\label{c4:sec:review}
+
+\needspace{6\baselineskip}
+\subsection*{What you should be able to do now}
+\begin{itemize}
+  \item Name the three pointer register pairs and say which registers each is made of.
+  \item Choose between \code{ld}, \code{ld Z+}, \code{ld -Z} and \code{ldd Z+q} for a given job,
+    and say what each leaves the pointer holding.
+  \item Say why \code{ldd} exists, why it is limited to a displacement of 63, and why \code{X}
+    cannot do it.
+  \item Read a byte from program memory, and say why it takes a different instruction and a
+    different kind of address.
+  \item Lay out a structure by hand and reach any field of it in one instruction.
+  \item Walk an array of structures, and say what the stride is and why it is not the field size.
+  \item Say which addresses in the data space a structure may occupy, and which look usable and are
+    not.
+  \item Compute the deepest the stack will reach in a program with interrupts, and check that it
+    does not meet your variables.
+\end{itemize}
+
+\needspace{6\baselineskip}
+\subsection*{Questions to test yourself}
+\begin{enumerate}
+  \item \code{Z} is \code{r31:r30}. Which is the high byte, and what does that mean for
+    \code{movw r30, r24}?
+  \item \code{ld r16, Z+} and \code{ldd r16, Z+0} both read the byte \code{Z} points at. Give two
+    differences.
+  \item Why can \code{ldd} reach \code{Z+63} but not \code{Z+64}, and why is there no \code{ldd} for
+    \code{X} at all?
+  \item An array of LED structures starts at \code{0x0300}. Where does the fourth one start, and
+    what is the arithmetic you would write to get there from the first?
+  \item A great deal of AVR code allocates driver structures at \code{RAMEND + 1}. What is at that
+    address on an ATmega328P, and what happens when you store there?
+  \item Your program is two calls deep when an interrupt arrives, and the handler saves five
+    registers and makes two more calls. How many bytes of stack are in use at the deepest moment?
+\end{enumerate}
+
+\needspace{6\baselineskip}
+\subsection*{Looking ahead}
+Chapter~5 is about counting time in hardware, and the arithmetic of not quite being able to:
+\begin{itemize}
+  \item Counting time in hardware instead of in a loop that does nothing else.
+  \item Prescalers, and the five ratios you actually get.
+  \item Turning a period you want into a register value that cannot represent it exactly, and
+    saying by how much you missed.
+  \item A blinker that keeps time while the processor does something else.
+\end{itemize}

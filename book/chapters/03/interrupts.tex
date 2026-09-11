@@ -1,0 +1,209 @@
+% Section 3.1, from lectures/L03/appendix/a_interrupts.md.
+
+\section{Interrupts and the Vector Table}
+\label{c3:sec:interrupts}
+
+\subsection{What an interrupt is on this machine}
+\label{c3:sec:what}
+An interrupt is a jump you did not write, taken between two instructions you did.
+
+That is the whole of it. There is no scheduler, no thread, no context to switch. Some piece of
+hardware sets a flag, the CPU finishes whatever instruction it was executing, pushes the program
+counter, and jumps to a fixed address. Your handler runs, executes \code{reti}, and the program
+counter comes back off the stack. The interrupted code has no way to know it happened.
+
+Everything difficult about interrupts follows from that last sentence. Code that can be suspended
+at any instruction boundary and resumed later is code you can no longer reason about one line at a
+time, and \secref{c3:sec:contract} is about what to do instead.
+
+\subsection{The vector table}
+\label{c3:sec:table}
+The first 52 words of program memory are not yours. They are a table of 26 slots, one per
+interrupt source, and the hardware jumps to a fixed slot for each.
+
+\bookfigure{vector_table}{The 26 ATmega328P interrupt vectors with their word addresses, from
+RESET at \code{0x0000} to SPM\_READY at \code{0x0032}, with the ones this book uses
+marked.}{c3:fig:vectors}
+
+Four things about that table are worth having straight before you write anything.
+
+\textbf{RESET is in it.} Vector 0 is the address the machine starts at, which is why a program's
+first instruction has to be a jump to your code rather than the beginning of it: everything from
+word \code{0x0002} upwards belongs to the table.
+
+\textbf{Each slot is two words, so vector $n$ is at word $2n$.} PCINT0 is vector 3 and lives at
+word \code{0x0006}, not \code{0x0003}. Two words, because a \code{jmp} on a part with 32\,KB of
+flash is a two-word instruction, and the table has to hold one even though a hand-written table
+usually puts a one-word \code{rjmp} there and leaves the second word unused.
+
+\begin{aside}
+\textbf{This book numbers the slots from zero}, so that RESET is vector 0 and the arithmetic is
+$2n$ with nothing added. The datasheet's own table numbers them from \textbf{one}, so what it calls
+``Vector No.~4'' is PCINT0, which is vector 3 here. The addresses are the same either way and only
+the index differs; the offset is worth knowing before you check one against the other.
+\end{aside}
+
+\textbf{A slot holds a jump, not a handler.} Two words is room for one instruction and nothing
+else, so what goes in a slot is \code{rjmp} to wherever your handler actually is. There is one
+exception, and it is a useful trick: a handler that fits in a single instruction can go directly
+in its slot, and \code{reti} alone is a legitimate handler that does nothing but acknowledge the
+interrupt.
+
+\textbf{The units already agree.} The datasheet's table is in words and AVRASM2 counts \code{.org}
+in words, so the datasheet's number is the number you write: PCINT0 is at \code{0x0006} in the
+table and \code{.org 0x0006} in your program. Nothing converts.
+
+Better still, you need not write the number at all. \code{m328Pdef.inc} names every vector:
+
+\begin{asm}
+.org PCI0addr
+    rjmp isr_pcint0
+\end{asm}
+
+\code{PCI0addr} is \code{0x0006}, \code{WDTaddr} is \code{0x000c}, \code{OC1Aaddr} is
+\code{0x0016}, and the device file is the one place any of them is written down. A table built
+from these names cannot drift from the datasheet, because it \emph{is} the datasheet.
+
+\begin{aside}
+Assembly written for \code{avr-gcc} counts \code{.org} in \textbf{bytes}, so the same PCINT0 slot
+is reached by \code{.org 0x000C} there. If you are reading AVR assembly from elsewhere and every
+handler seems to sit at twice its address, that is the dialect you are looking at, not a bug
+(\secref{c6:sec:asmfromc} puts the two side by side).
+\end{aside}
+
+\textbf{And a C program does not write a table at all.} Where \code{avr-gcc} links the program,
+avr-libc supplies the whole vector table and a macro fills one slot in:
+
+\begin{cppcode}
+ISR(TIMER1_COMPA_vect) { /* your handler */ }
+\end{cppcode}
+
+That builds the same two words at the same address. The names are the difference: avr-libc spells
+the slots \code{TIMER1_COMPA_vect} and \code{PCINT0_vect} where \code{m328Pdef.inc} spells them
+\code{OC1Aaddr} and \code{PCI0addr}, and one file never has both. \code{ISR} also writes the
+handler's prologue and epilogue for you, saving what the compiler used and ending in \code{reti},
+which is convenient right up to the point where you need to know exactly what was saved.
+\code{ISR(vect, ISR_NAKED)} gives you the slot and nothing else: no prologue, no epilogue, no
+\code{reti}, and every one of \secref{c3:sec:sreg}'s rules back in your hands. That is the form a
+kernel's tick handler takes, and it is worth recognising now even though nothing in this book links
+a C program to a vector.
+
+\textbf{Build this table yourself before reading it again}, in both units. The word address is the
+vector number times two, and the byte address is twice that again; the byte addresses are what the
+simulator's program counter holds, so you will want them the moment a test reports where something
+actually landed.
+
+\subsection{The one flag that controls all of them}
+\label{c3:sec:iflag}
+Bit 7 of \code{SREG}, the \code{I} bit, is the global interrupt enable (\secref{c1:sec:sreg}). With
+it clear, no interrupt is served, whatever else is configured. \code{sei} sets it and \code{cli}
+clears it.
+
+Enabling an interrupt therefore takes \textbf{two} switches, and forgetting either produces a
+program that runs perfectly and never interrupts:
+\begin{itemize}
+  \item the peripheral's own enable, which for a pin change interrupt is two more bits still
+    (\secref{c3:sec:pcint});
+  \item the global \code{I} bit.
+\end{itemize}
+
+\code{I} is not a convenience. The hardware clears it on entry to any handler and \code{reti} sets
+it again, which is what stops a handler from being interrupted by the same interrupt that started
+it, and what makes the blocked window in \secref{c3:sec:blocked} a real quantity rather than a
+worry.
+
+\subsection{What happens, in order}
+\label{c3:sec:sequence}
+
+\bookfigure{interrupt_sequence}{The interrupt sequence as seven stacked steps, from the pin
+changing, through finishing the current instruction, pushing the program counter, the vector jump,
+the handler and \code{reti}, to one guaranteed main-program instruction, with the datasheet's
+cycle cost beside each.}{c3:fig:sequence}
+
+Two of those steps deserve more than the box gives them.
+
+\textbf{``Finish the current instruction'' is why latency is a range rather than a number.} The
+hardware does not abandon an instruction half-done, so if the flag is set just as a four-cycle
+\code{ret} begins, three more cycles pass before anything else happens. The shortest possible
+response is therefore \textbf{6 cycles} with an \code{rjmp} in the table, and the longest is
+\textbf{9}.
+
+\textbf{Both of those numbers assume an \code{rjmp} in the slot}, which is what this book writes.
+Four cycles for the hardware's push, plus two for the jump, plus nought to three for the
+instruction being finished. A table built with \code{jmp}, which is what \code{avr-gcc} emits
+because it has to reach anywhere in flash, costs a cycle more at each end and the range is
+\textbf{7 to 10}. The vector jump is a choice you make, so the entry latency is partly yours, and
+quoting one range without saying which table it belongs to is how the two figures end up in the
+same argument.
+
+\textbf{``One more instruction, then the next'' is a guarantee, not an accident.} After
+\code{reti}, the AVR always executes at least one instruction of the interrupted program before
+serving another pending interrupt. Without that rule, a program under a steady stream of
+interrupts could make no progress at all while appearing to run.
+
+\subsubsection{What the simulator is and is not good for}
+Every other cycle count in this book was measured. These were not, and the reason is worth
+stating plainly rather than hiding.
+
+simavr gets half of this right. It finishes the instruction it was executing before it takes an
+interrupt, exactly as the device does: a flag that is set during a four-cycle \code{ret} waits up
+to three cycles in the simulator as it would on the chip, which is also why Chapter~5's own
+cross-check can explain a gap that alternates between 5332 and 5334 cycles by the two-cycle
+\code{rjmp} the flag had to wait for. What it does not do is charge for the entry itself. It
+pushes the program counter and jumps to the vector in no time at all, where the datasheet says the
+push takes \textbf{4 cycles}, so every interrupt in the simulator reaches its handler four cycles
+sooner than it would on the device. For that one quantity the datasheet is the authority and the
+simulator is not, and the answer is arrived at by reading rather than by measuring.
+
+That is not a complaint about simavr, which is exact about the thing this book leans on hardest:
+what an instruction costs. It is a reminder that a tool is trustworthy about specific things, and
+that ``I measured it'' is only an argument when you know the tool models what you measured.
+
+\subsection{Pin change interrupts}
+\label{c3:sec:pcint}
+The ATmega328P has two kinds of external interrupt, and the difference matters.
+
+\code{INT0} and \code{INT1} are two specific pins, each with its own vector, and each can be told
+to fire on a rising edge, a falling edge, any change, or a low level. They are precise and there
+are two of them.
+
+\textbf{Pin change interrupts} cover 23 pins, which is very nearly every I/O pin on the part,
+including the two that \code{INT0} and \code{INT1} already have, so a pin can have both kinds.
+They are a much blunter instrument:
+\begin{itemize}
+  \item \textbf{One vector per port}, not per pin. All eight pins of port B share \code{PCINT0}.
+  \item \textbf{Any change fires it.} There is no edge selection: pressed and released both
+    interrupt.
+  \item \textbf{It does not tell you which pin.} The handler is given nothing at all beyond the
+    fact that something on that port changed.
+\end{itemize}
+
+\bookfigure{pcint_registers}{\code{PCICR} and \code{PCMSK0} as their bits: \code{PCIE0} is the
+whole-port enable, \code{PCINT4} the single pin, and \code{PCINT7} and \code{PCINT6} are the
+crystal pins.}{c3:fig:pcint}
+
+Enabling one pin takes both registers:
+
+\begin{booktable}{@{}p{5em}p{4.2em}L@{}}
+  \thead{Register} & \thead{Address} & \thead{What it does} \\
+  \midrule
+  \code{PCICR} & \code{0x68} & One bit per port: \code{PCIE0} for B, \code{PCIE1} for C,
+    \code{PCIE2} for D. \\
+  \code{PCMSK0} & \code{0x6B} & One bit per pin of port B. \code{PCMSK1} and \code{PCMSK2} are C
+    and D. \\
+\end{booktable}
+
+Both are at \code{0x60} and above, which is \textbf{extended I/O}, so \code{in} and \code{out}
+cannot reach them and \code{lds} and \code{sts} are the only way in (\secref{c1:sec:iowindow}).
+This is the first place in the book where that distinction stops being trivia and starts being an
+assembler error.
+
+\textbf{So a handler for two buttons on one port has to ask each of them whether it was the one.}
+That is exactly what \code{btn_pressed} is for, and it is why the driver stores a structure per
+button rather than a bit per port.
+
+And there is one question the handler cannot answer at all: \textbf{which way the pin went}. The
+interrupt fires on press and on release, and by the time the handler reads the pin the answer it
+gets is the pin's state now, which for a fast enough press may already be the other one. The usual
+fix is to compare against the previous state, kept in a variable, which is a variable shared
+between a handler and everything else, which is \secref{c3:sec:contract}.

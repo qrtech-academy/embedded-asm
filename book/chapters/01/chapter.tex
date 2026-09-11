@@ -1,0 +1,46 @@
+% Chapter 1, typeset from lectures/L01: the README is the opener and the closing summary, and
+% each appendix is a section, in the same order and with the same subsections.
+
+\chapter{The AVR Core and the Toolchain}
+\label{c1:ch:core}
+
+{\large\itshape What the machine is, and how to make it run something.\par}
+
+\begin{chapterbox}{In this chapter}
+\begin{itemize}
+  \item What kind of machine an ATmega328P is, and which of your C intuitions survive contact
+    with it.
+  \item The 32 registers, and why only half of them can be loaded with a constant.
+  \item \code{SREG}: the flags every arithmetic instruction writes and every branch reads.
+  \item Three separate address spaces, and why address \code{0x0060} names three different bytes.
+  \item What an instruction \emph{is}: \code{ldi r16, 0x2A} taken apart into the sixteen bits it
+    assembles to.
+  \item The toolchain: \code{avra} as an assembler, its listing and map files, and a simulator
+    that runs your code and counts its cycles.
+  \item Your first subroutine, \code{shift_bits}, costed on paper before it is run.
+  \item A program that lights an LED in two instructions, which is as far as one pin gets you.
+\end{itemize}
+\end{chapterbox}
+
+The chapter is worked in the order a first session at the machine should go. The machine comes
+first, before any code: registers, flags and the three address spaces, read off the figures in
+\secref{c1:sec:core}. Nothing runs yet; the point is to know what you are writing \emph{for}. Then
+one instruction, taken apart, and the toolchain end to end: one \code{.asm} file through
+\code{avra} to a hex, then the same hex into a disassembler and into a simulator, three views of
+one artifact. Then counting cycles, and finally writing something, so that the chapter ends with
+something you can see.
+
+Two predictions are worth making before anything runs:
+\begin{itemize}
+  \item what \code{ldi r16, 0x2A} assembles to, from the encoding alone.
+  \item how many cycles \code{shift_bits} takes for an argument of 5, from the instruction table
+    alone.
+\end{itemize}
+You will check both, and one of them is the subject of this chapter's cross-check exercise.
+
+\input{chapters/01/core}
+\input{chapters/01/toolchain}
+\input{chapters/01/cycles}
+\input{chapters/01/subroutine}
+\input{chapters/01/summary}
+\input{chapters/01/exercises}

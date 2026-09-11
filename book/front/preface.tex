@@ -1,0 +1,131 @@
+% Preface: the README's About, Verification and Exercises sections, and the course info's
+% prerequisites, as the front matter of a book.
+
+\chapter{Preface}
+\markboth{Preface}{Preface}
+
+This book is for embedded engineers who write C or C++ for microcontrollers and have never
+written assembly, or have read some and never produced any. It takes you from your first
+\code{ldi} to a driver library with interrupts, timers and a watchdog, written entirely in AVR
+assembly and verified by tests that run on your laptop.
+
+\textbf{The subject is the machine.} Assembly is how you get at it; it is not being taught here as
+a way to write applications, and this book will not tell you it is faster than your compiler.
+What it is good for is narrower and more durable:
+\begin{itemize}
+  \item Reading a disassembly and knowing what you are looking at.
+  \item Writing the handful of things C genuinely cannot express.
+  \item Understanding what your compiler was doing all along.
+\end{itemize}
+
+\textbf{One body of code is built across the book, and it is yours to write:} an AVR assembly
+driver library, grown one chapter at a time. \code{led.asm}, \code{btn.asm},
+\code{led_array.asm}, \code{timer.asm}, \code{watchdog.asm} and the utilities under them, plus an
+application program that composes them.
+
+\section*{What you are assumed to know}
+The subject of this book is \textbf{AVR assembly and the machine underneath it}, not embedded
+programming in general. You are expected to arrive already comfortable with:
+\begin{itemize}
+  \item C or C++ for microcontrollers: pointers, structs, bitwise operators, \code{volatile}.
+  \item Binary and hexadecimal, two's complement, and reading a bit mask such as \code{(1 << 5)}.
+  \item What a microcontroller peripheral is, and the idea that a register write configures
+    hardware.
+  \item Reading a datasheet section: finding a register, its bit fields, and their meanings.
+\end{itemize}
+None of that is taught from scratch. What the book does teach from nothing is the instruction set,
+the register file, the calling contract, the vector table, and the toolchain: \code{avra} as an
+assembler, its listing and map files, and simavr as the thing that tells you whether you were
+right.
+
+\textbf{No assembly experience of any kind is assumed}, on the AVR or anywhere else. If you have
+written x86 or ARM assembly, Chapter~1 will be short work and the rest will not be: the AVR's
+16-bit-pointer-in-three-register-pairs arrangement, its separate program and data address spaces,
+and its I/O register window are all different enough to be worth reading rather than skimming.
+
+\section*{How verification works}
+Every quantitative claim in this book is checked twice, and the whole method is built on the two
+not always agreeing:
+\begin{itemize}
+  \item \textbf{By hand.} You compute the number from the instruction set summary and the
+    datasheet, before any code exists. Nothing automated checks this step, deliberately, and that
+    is the point of it.
+  \item \textbf{In the simulator.} The assembly you wrote is assembled, loaded into simavr by a
+    harness the companion repository provides, and measured: cycles consumed, pins driven, SRAM
+    written, interrupts taken.
+\end{itemize}
+Where the two disagree, the reconciliation is the lesson, and every chapter has one exercise that
+is exactly this. Your hand count of \code{shift_bits} and the figure the simulator reports at a
+call site differ by a fixed amount, and the difference is the \code{ldi} that set the argument up
+and the \code{rcall} that got you there. Your timer's computed period at 1\,kHz and its
+measured period agree, and then at 3\,kHz they do not, and the gap is not the timer's error but
+the two-cycle instruction each interrupt has to wait for.
+
+And once, in Chapter~3, they disagree because the \textbf{simulator} is wrong: simavr takes an
+interrupt without charging the four cycles the datasheet says the hardware spends pushing the
+program counter. Knowing which of your two instruments to believe, and why, is the skill this
+arrangement exists to build.
+
+\textbf{No exercise in this book needs hardware.} Everything is written, assembled, simulated and
+verified on an ordinary laptop. If you own an Arduino Uno or Nano with an ATmega328P and want to
+watch a real LED, \secref{c2:sec:board} covers flashing it with \code{avrdude}; nothing depends
+on it.
+
+\section*{What the exercises look like}
+Every chapter ends with six to ten exercises, and each one is labelled with its kind:
+
+\begin{booktable}{@{}p{9.4em}L@{}}
+  \thead{Kind} & \thead{What it asks of you} \\
+  \midrule
+  \kindtag{Recall} & State something from the chapter, in your own words. No tools. \\
+  \kindtag{Hand calculation} & Work a number out on paper, from the datasheet and the instruction
+    set summary. \\
+  \kindtag{Design} & Decide something before writing it: a register allocation, a struct layout,
+    a prescaler. \\
+  \kindtag{Code} & Write assembly. Checked by that chapter's test suite, in the simulator. \\
+  \kindtag[fillaccent]{Cross-check} & Exactly one per chapter. See below. \\
+\end{booktable}
+
+\textbf{The Cross-check is the signature exercise of this book.} You compute a number by hand,
+you run your own code on the same problem, and you reconcile the two. Its solution says how large
+a discrepancy to expect and where it comes from, because ``your two answers differ by 8\%'' is the
+lesson, not a sign that you did it wrong. Some of these discrepancies close to zero and some do
+not, and knowing which is which is most of what separates an engineer who can time a routine from
+one who assumes the datasheet did it for them.
+
+\textbf{The worked solutions are not in this book.} They will be published in the companion
+repository, beside the lecture each chapter is typeset from, and until then most of the code exercises need nothing more than
+the chapter's test suite to tell you whether you are right. The hand calculations have short
+answers in Appendix~\ref{app:answers}, numbers only, so that you can check one without a laptop.
+Clone the repository before you start; the book assumes you have it open.
+
+\section*{Setting up}
+Everything runs on WSL or Ubuntu. Clone the companion repository with its two submodules, the
+test framework and the simulator harness, at the tag this edition was written against, and install
+the toolchain. The tag is \code{v1.0.0}: the code and the test suites exactly as this book
+describes them, whatever the main branch has done since.
+
+\begin{shell}
+git clone --recursive --branch v1.0.0 \
+          https://github.com/qrtech-academy/embedded-asm.git
+sudo apt -y update
+sudo apt -y install git make g++ avra binutils-avr simavr \
+                    libsimavr-dev libelf-dev clang-format
+sudo apt -y install gcc-avr avr-libc  # Chapter 6 only
+avra --version                        # 1.4.2 or newer
+\end{shell}
+
+\noindent Four commands then cover everything the book asks of the repository:
+
+\begin{shell}
+make help                # List every target.
+make build               # Assemble the drivers and build the simulator harness.
+make test                # Build and run every chapter's test suite.
+make clean               # Remove everything the build generates.
+\end{shell}
+
+\noindent Every one of those runs from the very first commit, when almost nothing exists, and
+reports what it could not do by name. A check that silently did not run must never read like one
+that passed, so \code{make build} on a fresh clone builds the two things that ship, prints a
+\code{SKIP} line for the drivers you have not written, and exits 0. That is the truth about a
+repository where you have not written anything yet.

@@ -1,0 +1,162 @@
+% Section 6.1, from lectures/L06/appendix/a_watchdog.md.
+
+\section{The Watchdog}
+\label{c6:sec:watchdog}
+
+\subsection{What it actually detects}
+\label{c6:sec:detects}
+A watchdog is a timer that resets the device unless your program keeps telling it not to. That is
+the whole mechanism, and everything useful and everything disappointing about it follows from
+that one sentence.
+
+\textbf{It detects exactly one thing: that your program stopped reaching the instruction that pets
+it.}
+
+So it catches a program stuck in a loop that never exits, a program blocked waiting for an
+interrupt that will never arrive, and a program that jumped somewhere meaningless and is executing
+whatever it found. Those are real failures and they are the ones hardest to catch any other way.
+
+Here is what it does \textbf{not} catch, and the list is longer:
+\begin{itemize}
+  \item \textbf{A program computing wrong answers quickly.} It is petting the watchdog on schedule
+    and is completely broken.
+  \item \textbf{The atomicity bug from Chapter~3.} The main loop reads a torn 16-bit value and
+    carries on. Nothing is stuck.
+  \item \textbf{A stack that has grown into your variables}, right up until it corrupts a return
+    address and the program jumps somewhere that stops petting (\secref{c4:sec:overflow}).
+  \item \textbf{A driver writing to the wrong port register.} The program runs perfectly and the
+    hardware does the wrong thing.
+  \item \textbf{Anything about correctness at all.}
+\end{itemize}
+
+And it introduces a failure of its own: \textbf{a program that pets the watchdog from inside the
+wrong place.} A handler that runs on a timer and pets the watchdog will keep petting it while the
+main loop is completely stuck, which converts a watchdog from a safety mechanism into decoration.
+Pet it from one place, in the main loop, at the point that proves the whole loop ran.
+
+\subsection{The two modes}
+\label{c6:sec:modes}
+The watchdog can do one of two things when it times out, and it is worth being clear that these
+are different tools.
+
+\textbf{System reset}, with \code{WDE} set. The device restarts as though it had been power
+cycled, except that SRAM keeps its contents and \code{MCUSR} records that the watchdog was the
+cause. This is the one you want in a product.
+
+\textbf{Interrupt}, with \code{WDIE} set. The timeout raises the \code{WDT} interrupt instead, and
+your handler runs. Nothing is reset. This is useful for waking from sleep (\secref{c6:sec:sleep})
+and for recording diagnostics before a deliberate reset, and it is \textbf{not} a safety mechanism,
+because a program too broken to pet the watchdog is usually too broken to run a handler sensibly.
+
+Both bits can be set at once, which the datasheet calls interrupt-and-reset mode: the first
+timeout interrupts, and because the hardware clears \code{WDIE} on entry, the second one resets.
+That gives you one chance to save something before the restart.
+
+\subsection{The registers}
+\label{c6:sec:registers}
+
+\bookfigure{watchdog_registers}{\code{WDTCSR} drawn as its eight bits, with \code{WDP3} at bit 5
+and \code{WDP2} to \code{WDP0} at bits 2 to 0, and \code{MCUSR} below it with \code{WDRF} marked
+as the bit set when the watchdog caused the last reset.}{c6:fig:registers}
+
+\begin{booktable}{@{}p{5.2em}p{4.4em}L@{}}
+  \thead{Register} & \thead{Address} & \thead{Holds} \\
+  \midrule
+  \code{WDTCSR} & \code{0x60} & The timeout selector, \code{WDE}, \code{WDIE}, and the window bit
+    \code{WDCE}. \\
+  \code{MCUSR} & \code{0x54} & Why the last reset happened: power-on, external, brown-out, or
+    watchdog. \\
+\end{booktable}
+
+\textbf{\code{WDTCSR} is in extended I/O and \code{MCUSR} is not}, so the first needs \code{lds} and
+\code{sts} and the second can use \code{in} and \code{out}. Two registers in one subroutine, two
+addressings.
+
+\textbf{The timeout selector is four bits that are not next to each other.} \code{WDP3} is bit 5,
+and \code{WDP2} to \code{WDP0} are bits 2 to 0, with \code{WDCE} and \code{WDE} in between. The
+datasheet numbers the timeouts 0 to 9, and \textbf{that number is not the byte you write}:
+
+\begin{narrowtable}{@{}lcc@{}}
+  \thead{Timeout} & \thead{Selector} & \thead{Byte} \\
+  \midrule
+  16\,ms & 0 & \code{0x00} \\
+  125\,ms & 3 & \code{0x03} \\
+  2\,s & 7 & \code{0x07} \\
+  4\,s & 8 & \textbf{\code{0x20}} \\
+  8\,s & 9 & \textbf{\code{0x21}} \\
+\end{narrowtable}
+
+\textbf{Writing \code{0x08} because you wanted four seconds is the most expensive typo in this
+chapter.} \code{0x08} is \code{WDE} with the selector left at zero, so it means ``reset me if I go
+quiet for sixteen milliseconds''. For most programs that is immediately, and for ever: the device
+resets, runs a few hundred microseconds of startup, and resets again. Reprogramming it then means
+winning a race against the watchdog, which is possible and unpleasant.
+
+Nobody remembers that table, and nobody should try to. What is worth remembering is its shape:
+the four selector bits are not contiguous, so the byte is never the timeout number.
+
+\subsection{The timed write sequence}
+\label{c6:sec:timed}
+The watchdog is the one peripheral on this device that refuses to be configured carelessly, and
+the reason is that a program which has gone wrong must not be able to switch off the thing that
+would rescue it.
+
+\bookfigure[htbp]{timed_write}{Six steps in order: save \code{SREG} and \code{cli}, \code{wdr}, clear
+\code{WDRF} in \code{MCUSR}, then two shaded writes that must fall within four cycles of each
+other, then restoring \code{SREG}.}{c6:fig:timed}
+
+So changing \code{WDE} or the timeout takes two writes:
+\begin{enumerate}
+  \item Write \code{WDCE} and \code{WDE} \textbf{together}. This opens a window.
+  \item Within \textbf{four cycles}, write the value you actually want, with \code{WDCE} clear.
+\end{enumerate}
+
+Four cycles, not four instructions. Two consecutive \code{sts} instructions are two cycles each,
+so they fit with one cycle to spare: a single \code{nop} between them still works, and anything
+longer does not.
+
+\textbf{This is why the sequence starts with \code{cli}.} An interrupt landing between the two
+writes takes at least six cycles to reach your handler and then runs the whole thing
+(\secref{c3:sec:sequence}). The window would be long gone. Turning interrupts off is not defensive
+style here; it is the only way the sequence can be made to work at all.
+
+\textbf{And it is why \code{WDRF} must be cleared first.} The hardware will not let you clear
+\code{WDE} while \code{WDRF} is set in \code{MCUSR}. That rule exists so that a device which has
+just been reset by the watchdog cannot immediately disable it and carry on being broken. The
+consequence for you is specific: a driver that forgets to clear \code{WDRF} works perfectly the
+first time it runs and cannot switch the watchdog off after a watchdog reset, which is precisely
+when you most want to.
+
+\subsubsection{What a failed sequence leaves behind}
+If the second write misses its window, the hardware ignores it. \code{WDCE} clears itself after
+four cycles, and what remains is whatever the \emph{first} write was allowed to change on its own:
+\code{WDE} is set, because setting it never needs the window, and the timeout selector is where it
+was, because changing it does. On a device fresh from reset the selector is zero, so the register
+holds \code{0x08}.
+
+That is system reset mode with the shortest timeout. \textbf{A sequence that is merely slightly
+too slow does not fail safe; it fails into system reset mode, and from reset into the most
+aggressive setting the register has.} The simulator models this exactly, and the test suite checks
+for it: if \code{WatchdogDriver.InitWritesTheByteAsked} ever reports \code{WDTCSR} holding
+\code{0x08}, that is what happened.
+
+\subsection{Choosing a timeout}
+\label{c6:sec:timeout}
+Ten timeouts, from 16\,ms to 8\,s, roughly doubling. The choice is a genuine engineering decision
+with a cost in both directions.
+
+\textbf{Too short} and the watchdog fires during normal operation, on the one iteration that took
+longer than usual. A program that resets itself occasionally under load is far worse than one that
+does not have a watchdog at all, because now you are debugging the watchdog as well.
+
+\textbf{Too long} and a program that has stopped stays stopped for that long. Eight seconds is a
+long time for a machine to be doing nothing.
+
+The rule is: \textbf{the shortest timeout that comfortably exceeds your worst-case loop time}.
+Worst case, not typical: the iteration that reads a sensor, and handles two interrupts, and takes
+the slow branch.
+
+\textbf{And the timeouts are nominal.} They come from an internal oscillator that runs at roughly
+128\,kHz and varies with supply voltage and temperature. The datasheet's ``1.0\,s'' and the
+``1024\,ms'' you will find in other people's code are the same setting described two ways, and
+neither is a promise. Leave real margin, and do not build anything on the exact value.

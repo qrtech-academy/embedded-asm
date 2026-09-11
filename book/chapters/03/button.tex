@@ -1,0 +1,224 @@
+% Section 3.3, from lectures/L03/appendix/c_button_driver.md.
+
+\section{The Button Driver}
+\label{c3:sec:driver}
+
+\subsection{The task}
+\label{c3:sec:task}
+Write \file{drivers/source/btn.asm}, and extend \file{drivers/app/main.asm} with a handler.
+
+The button driver is the LED driver's mirror image for its first half and something new for its
+second. Both are handed an Arduino pin number and build a structure of register addresses; where
+\code{led_init} makes the pin an output, \code{btn_init} makes it an input and switches its pull-up
+on. \code{btn_pressed} is \code{led_enabled} with its answer inverted. The new part is the four
+subroutines that turn a pin change interrupt on and off for one pin without disturbing the other
+seven that share its vector.
+
+\subsection{The structure}
+\label{c3:sec:layout}
+Ten bytes, as \file{drivers/include/btn.inc} declares.
+
+\begin{booktable}{@{}p{3.4em}p{9em}p{2.6em}L@{}}
+  \thead{Offset} & \thead{Field} & \thead{Size} & \thead{Holds} \\
+  \midrule
+  0 & \code{BTN_PIN_REG} & 2 & Data space address of \code{PINx} \\
+  2 & \code{BTN_DIR_REG} & 2 & Data space address of \code{DDRx} \\
+  4 & \code{BTN_PORT_REG} & 2 & Data space address of \code{PORTx} \\
+  6 & \code{BTN_PCMSK_REG} & 2 & \code{PCMSK0} for port B, \code{PCMSK2} for port D \\
+  8 & \code{BTN_PCIE_BIT} & 1 & \code{PCIE0} for port B, \code{PCIE2} for port D \\
+  9 & \code{BTN_PIN} & 1 & Bit number within the port, 0 to 7 \\
+    & \code{BTN_SIZE} & 10 & Total \\
+\end{booktable}
+
+The first three fields are the LED's three, at the same offsets and in the same order. That is
+deliberate: a button is an LED's three register pointers plus what it takes to raise an interrupt.
+
+It is also a trap worth naming now, because nothing prevents you passing a button structure to
+\code{led_on}. \textbf{Six} bytes at the front are laid out identically, the three pointers, and
+the seventh is not: offset 6 is \code{LED_PIN} in one structure and the low byte of
+\code{BTN_PCMSK_REG} in the other. So \code{led_on} finds three valid port registers and then a pin
+number of \code{0x6B} or \code{0x6D}, which is the same failure as reaching for the wrong field
+within one structure (\secref{c3:sec:irq}): \code{shift_bits} returns 0 for any argument of 8 or
+more, the mask is zero, and the subroutine writes nothing at all and reports success.
+
+\subsection{\code{btn_init}}
+\label{c3:sec:init}
+\noindent\textbf{Arguments:} \code{r25:r24} is the structure address, \code{r22} the Arduino pin
+number.\\
+\textbf{Returns:} \code{r24} is 0 on success, 1 if the pin is not one this driver accepts.
+
+\medskip
+\noindent The same shape as \code{led_init} (\secref{c2:sec:init}), with two more fields to fill
+and the direction reversed:
+\begin{enumerate}
+  \item Copy the structure pointer into \code{Z}.
+  \item Validate, choose the port, and subtract 8 for port B. Reject before writing anything.
+  \item Store the bit number, the three port register addresses, \textbf{the mask register
+    address} (\code{PCMSK0} or \code{PCMSK2}) and \textbf{the \code{PCICR} bit number}
+    (\code{PCIE0} or \code{PCIE2}).
+  \item Make the pin an \textbf{input}: call \code{shift_bits_inverted}, then read \code{DDRx},
+    \code{and} the mask, write it back.
+  \item Switch the \textbf{pull-up} on: call \code{shift_bits}, then read \code{PORTx}, \code{or}
+    the mask, write it back.
+  \item Return 0.
+\end{enumerate}
+
+\subsubsection{Pinned details}
+\textbf{Store the \code{PCICR} bit number before you call anything.} Whatever register you loaded
+it into is call-clobbered, and \code{shift_bits} will take it (\secref{c2:sec:nested}). The same
+applies to the mask register address. Fill the structure first, then configure the hardware.
+
+\textbf{Steps 4 and 5 are \code{led_init}'s two steps with the masks swapped.} The LED clears
+\code{PORTx} and sets \code{DDRx}; the button clears \code{DDRx} and sets \code{PORTx}. If you find
+yourself writing something structurally different, one of the two is wrong.
+
+\textbf{\code{PCMSK0} and \code{PCMSK2} are at \code{0x6B} and \code{0x6D}}, which is extended I/O,
+so nothing here can use \code{in} or \code{out} (\secref{c3:sec:pcint}).
+
+\subsection{\code{btn_pressed}}
+\label{c3:sec:pressed}
+\noindent\textbf{Arguments:} \code{r25:r24} is the structure address.\\
+\textbf{Returns:} \code{r24} is 1 if the button is down, 0 if it is up.
+
+\medskip
+\noindent The same shape as \code{led_enabled} (\secref{c2:sec:enabled}), with one difference that
+is the whole reason the subroutine exists:
+\begin{enumerate}
+  \item Copy the structure pointer into \code{Z}.
+  \item Read the pin number from \code{BTN_PIN} and call \code{shift_bits} to turn it into a mask.
+  \item Read \code{PINx} through the address in \code{BTN_PIN_REG}.
+  \item Mask the two together, and return \textbf{1 when the result is zero}.
+\end{enumerate}
+
+\textbf{Step 4 is inverted, and the inversion is the point.} The pull-up holds the pin high until
+the button shorts it to ground, so \code{PINx} reads 0 when the button is down
+(\secref{c2:sec:button}). Every other ``is it on'' subroutine in this library returns 1 for a set
+bit. This one returns 1 for a clear one, and writing it the other way round produces a program that
+is exactly and reliably backwards.
+
+\subsubsection{Pinned details}
+\textbf{Read \code{PINx}, never \code{PORTx}.} On an input pin \code{PORTx} is the pull-up switch,
+so reading it would report what you configured rather than what the world is doing, and it would
+give the same answer pressed and unpressed. This is \code{led_enabled}'s rule with the stakes
+raised: there, the two registers agree because the pin is an output; here they never agree.
+
+\textbf{The branch costs a cycle on one path.} As in \code{led_enabled}, the natural
+implementation ends in a conditional branch, so this subroutine costs one cycle more on one of its
+two answers. Here it is the \textbf{unpressed} path that is dearer, because pressed is the case
+that falls through. Notice it rather than avoiding it: the cross-check in
+Exercise~\ref{c3:ex:crosscheck} asks you to account for that cycle.
+
+\textbf{It reports the pin, not the press.} A mechanical button bounces, and this subroutine has no
+memory and no timer, so two calls a millisecond apart during a bounce legitimately disagree
+(\secref{c2:sec:button}). What it reports is the pin, now, and that is all it promises.
+
+\subsection{The four interrupt subroutines}
+\label{c3:sec:irq}
+All four take the structure address in \code{r25:r24}.
+
+\textbf{\code{btn_enable_interrupt}} sets the port's bit in \code{PCICR} and the pin's bit in the
+structure's mask register. Both are read-modify-write.
+
+\textbf{\code{btn_disable_interrupt}} clears the pin's bit in the mask register \textbf{and leaves
+\code{PCICR} alone}. \code{PCICR} enables a whole port's vector and other buttons on that port may
+still want it; clearing it here would silently switch off every one of them.
+
+\textbf{\code{btn_interrupt_enabled}} returns 1 if the pin's bit in the mask register is set,
+else 0.
+
+\textbf{\code{btn_toggle_interrupt}} calls \code{btn_interrupt_enabled} and then one of the other
+two.
+
+\subsubsection{Pinned details}
+\textbf{The driver does not touch the global interrupt flag.} No \code{sei}, no \code{cli},
+anywhere in this file. You will find AVR drivers that run \code{sei} at the end of their enable
+function, and it is convenient and it is rude: it decides on your behalf that the whole program is
+now ready to be interrupted, at a moment chosen by whoever happened to configure a button last.
+\code{sei} belongs in your setup code, once, after everything is configured.
+
+\textbf{\code{btn_interrupt_enabled} must return 1 for enabled and 0 for disabled}, and that
+sentence is here because the classic mistake is to return them the wrong way round. Nothing about
+such code looks wrong: the branch is there, both constants are there, and they are swapped. Every
+caller then does the opposite of what it meant, and \code{btn_toggle_interrupt} stops toggling and
+starts latching, which is a symptom two steps removed from its cause.
+
+\textbf{\code{btn_disable_interrupt} shifts by the pin number}, field at offset 9, not by anything
+at offset 0. Reaching for the wrong field gives a shift count of \code{0x23}, which produces a mask
+of zero, which clears nothing, so a button you disabled stays enabled. And clear that bit alone: a
+second button on the same port has its own bit in the same mask register, and the test with two
+buttons is the one that checks it survives.
+
+\textbf{Preserve the structure pointer across the nested call in \code{toggle}.}
+\code{btn_interrupt_enabled} sets \code{Z} to the same value \code{toggle} had, so \code{Z} survives
+by coincidence, and relying on that is a decision rather than a fact about the contract. Pushing
+\code{r25:r24} and popping them after is four instructions and eight cycles and needs no footnote.
+Then jump to the enable or disable subroutine with \code{rjmp} rather than calling it: it is the
+last thing you do, so its \code{ret} can be yours.
+
+\subsection{The handler}
+\label{c3:sec:handler}
+Add to \file{drivers/app/main.asm}:
+
+\textbf{A vector entry.} \code{.org} the word address of PCINT0, writing \code{.org PCI0addr} so
+that the device file supplies it, then \code{rjmp} to your handler (\secref{c3:sec:table}).
+AVRASM2 counts \code{.org} in words, so the datasheet's \code{0x0006} is the number you write;
+\code{0x000C} is the byte address and lands you in the watchdog's slot.
+
+\textbf{A handler} that saves what it uses, asks the button whether it is pressed, toggles the LED
+if it is, restores, and executes \code{reti}. Its shape is the prologue and epilogue from
+\secref{c3:sec:sreg}, with a handful of instructions in the middle. \textbf{Call it
+\code{isr_pcint0}}, exactly, because two things outside your program look for it by that name: the
+measurement command in the exercises, and the test suite.
+
+\textbf{Setup} that initialises the LED on pin 13 and the button on pin 12, enables the button's
+interrupt, and then runs \code{sei} \textbf{once}, after everything else. Then a main loop that
+does nothing.
+
+\subsubsection{Pinned details}
+\textbf{Save \code{r24}, \code{r25}, \code{r18}, \code{r19}, \code{X} and \code{Z} as well
+as \code{SREG}: nine things.} The handler passes a pointer in \code{r25:r24} and calls subroutines
+that clobber both, plus \code{r18} and \code{r19} inside \code{shift_bits}, plus \code{Z}, which
+\code{btn_pressed} and \code{led_toggle} load with their structure, and \code{X}, which they load
+with a port register's address. Every one of those has to be saved, because the interrupted code
+agreed to nothing. Leaving out the four you never name yourself is the mistake that costs sixteen
+cycles less and a bug that appears only when the main loop happens to be using a pointer.
+
+That list is built from what these drivers actually do, which is a decision
+(\secref{c2:sec:nested}). The contract would let them clobber \code{r20} to \code{r23} as well,
+and a handler that calls code you did not write has to save those too.
+
+\textbf{The LED and the button must be on different pins.} Putting both on 13 means
+\code{btn_init} makes the pin an input after \code{led_init} made it an output, and the LED stops
+working in a way that looks like the handler never runs.
+
+\textbf{\code{sei} goes last, in setup, once.} Not in the driver, and not before the structures
+are built. With \code{sei} last nothing can interrupt setup, so the order of everything before it
+stops mattering. With it first, setup is safe only while no interrupt source is switched on before
+the structure its handler reads, and one that arrives early runs your handler against a structure
+that is half zeros.
+
+\textbf{This is the only part of the book a unit test cannot reach.} Everything else you have
+written is a subroutine, and a test can call a subroutine; an interrupt has to arrive. So the
+suite's \file{app_test.cpp} loads the whole program, runs it, and changes the pin from outside,
+which is the only way to find out whether the vector entry points at your handler, whether
+\code{sei} ran, and whether the handler ends with \code{reti}. It checks no cycle counts: what your
+handler costs depends on what your handler saves, and measuring that is
+Exercise~\ref{c3:ex:crosscheck}'s job rather than the suite's.
+
+\subsection{What this driver does not do}
+\label{c3:sec:notdo}
+\textbf{It does not debounce.} A press produces several interrupts, a few milliseconds apart, and
+the handler runs for every one. An LED toggled by this driver will appear to respond to about half
+of your presses, and that is the driver working correctly.
+
+\textbf{It does not tell you which way the pin went.} The interrupt fires on press and on release,
+and by the time the handler reads the pin it is reading the present, not the edge. Comparing
+against a remembered previous state is the usual answer, and it needs a variable shared with the
+handler (\secref{c3:sec:shared}).
+
+\textbf{It does not tell you which pin.} One vector serves eight, so a handler with two buttons on
+one port has to ask both.
+
+\textbf{It does not stop you enabling an interrupt with no handler behind it.} The vector then
+contains whatever was there, which for an unwritten slot is \code{0xFFFF}, and the machine executes
+off into unprogrammed flash and eventually restarts (Exercise~\ref{c1:ex:program}, part d).

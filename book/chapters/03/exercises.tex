@@ -1,0 +1,189 @@
+% Section 3.5, from lectures/L03/appendix/d_exercises.md.
+
+\section{Exercises}
+\label{c3:sec:exercises}
+
+\begin{aside}
+\textbf{How to check your work.} Exercises \ref{c3:ex:driver} and \ref{c3:ex:handler} are checked
+by this chapter's test suite: write the file at the path the specification gives, then run
+\code{make test}. The suite is cumulative and runs Chapter~1's and Chapter~2's tests too.
+
+The rest will have worked solutions in the companion repository, published later as
+\file{lectures/L03/appendix/e_solutions.md}, and the hand calculations have short answers in
+Appendix~\ref{app:answers}. Work each one before you read it.
+
+\textbf{No hardware is needed for any of this.}
+\end{aside}
+
+Each exercise is labelled with its kind. There is exactly one \textbf{Cross-check}, and here it is
+Exercise~\ref{c3:ex:crosscheck}.
+
+% ------------------------------------------------------------------------------------------
+\exercise{The table}{Recall}
+\label{c3:ex:table}
+\begin{parts}
+  \item How many vectors does the ATmega328P have, how many words does each slot occupy, and how
+    many words of program memory does the whole table therefore take?
+  \item RESET is in the table. What follows from that about the first instruction of your
+    program?
+  \item A slot is two words. Give the two things that can go in one, and say which this book uses.
+  \item The datasheet says PCINT1 is at \code{0x0008}. What do you write after \code{.org}, and
+    what is the name \code{m328Pdef.inc} gives that address? Assembly written for \code{avr-gcc}
+    would need \code{.org 0x0010} for the same vector. Where does the factor of two come from?
+  \item What is at word address \code{0x0007}, and why is it not a place anything may jump to?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Addresses and response times}{Hand calculation}
+\label{c3:ex:response}
+\begin{parts}
+  \item Give the vector number, word address and byte address for PCINT0, PCINT2 and WDT.
+  \item An interrupt flag is set at the exact moment an instruction finishes, and the vector holds
+    an \code{rjmp}. How many cycles pass before the handler's first instruction? Show the terms.
+  \item The same, but the flag is set just as a four-cycle \code{ret} begins.
+  \item The compiler puts \code{jmp} in vector slots rather than \code{rjmp}. Redo (b) and (c) for
+    a \code{jmp} table, and say in one sentence why a compiler would choose the slower one.
+  \item Your handler measures 104 cycles including its \code{reti}, and the table uses
+    \code{rjmp}. For how long are interrupts disabled? The answer is not 104.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The prologue}{Design}
+\label{c3:ex:prologue}
+A handler is about to be written. It calls \code{btn_pressed} and \code{led_toggle}, which
+between them use \code{r18}, \code{r19}, \code{r24}, \code{X} and \code{Z}, and it uses
+\code{r24} and \code{r25} itself to pass a pointer.
+\begin{parts}
+  \item List every register the handler must save, and say why the list is not ``the call-saved
+    ones''.
+  \item Write the prologue and epilogue, including \code{SREG}. Give the order precisely.
+  \item Explain why the register is pushed \emph{before} \code{SREG} is read, and why \code{SREG}
+    is restored \emph{before} the last \code{pop}.
+  \item Somebody writes the epilogue as \code{pop r24}, \code{pop r25}, \code{out SREG, r24},
+    \code{reti}. Say what is wrong with it, and describe the symptom in the interrupted program.
+  \item How many cycles do your prologue and epilogue cost together? What fraction is that of a
+    handler whose useful work is a single \code{sts}?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{One vector, eight pins}{Design}
+\label{c3:ex:onevector}
+\begin{parts}
+  \item Two buttons are wired to Arduino pins 12 and 13. How many interrupt vectors are involved,
+    and which?
+  \item One of them is pressed. Describe exactly what the handler is told.
+  \item Write, in words, how the handler works out which button it was.
+  \item The handler wants to know whether the button was \emph{pressed} or \emph{released}. Explain
+    why it cannot find out from the pin alone, and what it would need to keep in order to know.
+  \item A third button is added on Arduino pin 3. What changes in \code{PCICR}, what changes in the
+    mask registers, and how many vectors are now involved?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The button driver}{Code}
+\label{c3:ex:driver}
+Write \file{drivers/source/btn.asm} to the specification in \secref{c3:sec:driver}.
+\begin{parts}
+  \item Write all six subroutines.
+  \item Run \code{make test}.
+  \item Deliberately swap the two return values in \code{btn_interrupt_enabled}, rebuild, and note
+    which tests fail. One of them is not about \code{btn_interrupt_enabled} at all. Explain why it
+    failed, then put the code back.
+  \item Deliberately make \code{btn_disable_interrupt} clear \code{PCICR} as well as the mask bit.
+    Say which test catches it, and why the test with two buttons does not.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The handler}{Code}
+\label{c3:ex:handler}
+Extend \file{drivers/app/main.asm} to the specification in \secref{c3:sec:handler}.
+\begin{parts}
+  \item Write the vector entry, the handler, the setup and the main loop. Put the LED on Arduino
+    pin 13 and the button on pin 12.
+  \item \code{make build} should build \file{app.hex}.
+  \item Move \code{sei} from the end of setup to the beginning, before the structures are built.
+    Say whether anything goes wrong in your program as it stands, and why. Then enable the
+    button's interrupt before \code{btn_init} as well: describe what could now go wrong, and say
+    why testing it would probably not show you.
+  \item Put the button on pin 13 as well, so the LED and the button share a pin. Predict what
+    happens before rebuilding, then check.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The shared counter}{Hand calculation}
+\label{c3:ex:counter}
+A handler increments a 16-bit counter in SRAM. The main loop reads it with two \code{lds}
+instructions, low byte first.
+\begin{parts}
+  \item The counter holds \code{0x00FF} and the handler runs between the two \code{lds}. What value
+    does the main loop assemble? Give it in hex and in decimal, and say what the counter actually
+    held before and after.
+  \item How many cycles wide is the window? At 16\,MHz, with the handler firing at 1\,kHz and the
+    main loop reading once per millisecond, roughly how often would you expect a torn read?
+  \item Write the fix, and give its cost in cycles.
+  \item The obvious fix has a bug of its own. Say what it is and write the version without it.
+  \item The same handler also sets an 8-bit flag that the main loop reads. Does that need
+    protecting? Say why, in one sentence about instructions.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise[fillaccent]{How long is the door shut}{Cross-check}
+\label{c3:ex:crosscheck}
+\emph{Compute it by hand, measure it, reconcile.}
+
+Your handler runs with interrupts disabled. This exercise is about finding out for how long, and
+about which parts of that number you can measure and which you cannot.
+\begin{parts}
+  \item \textbf{By hand.} Count the cycles of your handler along the path where the button is
+    \textbf{not} pressed: prologue, the call to \code{btn_pressed}, the compare, the branch taken,
+    epilogue, \code{reti}. You measured \code{led_enabled} this way in Chapter~2, and
+    \code{btn_pressed} measures the same way; if you have not measured it yet, do that now.
+  \item \textbf{The whole window.} Add the entry to your handler's own cost: four cycles for the
+    hardware's push, two for the \code{rjmp} in the vector slot, then the handler, then the
+    \code{reti}. \textbf{This is the one number in the chapter you cannot check by measuring},
+    because simavr charges nothing for the hardware's four-cycle push (\secref{c3:sec:sequence}).
+    Write it down anyway, and expect (c) to disagree.
+  \item \textbf{By measurement.}
+\begin{shell}
+make measure IMAGE=app \
+    CALLS="led_init:0x0200:13 btn_init:0x0240:12 --drive B4=1 isr_pcint0"
+\end{shell}
+    \code{--drive B4=1} holds the button's pin high, which is a button that is \textbf{not}
+    pressed. \code{IMAGE=app} because a handler lives in your program, not in the driver library.
+    This works at all because \code{reti} pops a return address exactly as \code{ret} does.
+  \item \textbf{Reconcile.} The two should agree. If they do not, the most likely culprits are the
+    branch you charged one cycle instead of two, and forgetting that the measured figure already
+    includes the \code{reti}.
+  \item \textbf{Now the other path.} Predict the pressed-path cost before measuring it:
+\begin{shell}
+make measure IMAGE=app \
+    CALLS="led_init:0x0200:13 btn_init:0x0240:12 --drive B4=0 isr_pcint0"
+\end{shell}
+    State the difference between the two paths and account for every cycle of it. There are five
+    terms and two of them are negative.
+  \item \textbf{The part you cannot measure.} Add the response time from \secref{c3:sec:sequence},
+    not forgetting the one main-program instruction it guarantees after \code{reti}, to get the
+    total worst-case delay before a \emph{second} interrupt can be served. Then set that
+    against what the simulator does: it finishes the interrupted instruction as the device would,
+    and then charges nothing at all for the push (\secref{c3:sec:sequence}). Note that there is no measurement
+    to make here, because the harness offers none for this quantity, which is itself part of the
+    answer. Say which of your sources you believe and why, and state the general rule you would
+    apply next time a tool and a datasheet disagree.
+  \item \textbf{What it means.} A second button on the same port is pressed while your handler is
+    running. Is its interrupt lost or delayed? Now the \emph{same} button bounces twice during the
+    window. Same question, and the answer is different. Explain both.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Why it responds to half your presses}{Design}
+\label{c3:ex:bounce}
+You build the program, wire a button, and press it. The LED toggles about half the time.
+\begin{parts}
+  \item Explain what is happening, in terms of the circuit rather than the code.
+  \item Roughly how many interrupts does one press generate, and over what timescale?
+  \item Why does ``about half'' make sense as an outcome, and what would the LED do if a press
+    generated an odd number of interrupts instead?
+  \item Give three ways to fix it, and say what each one costs. One of them needs something this
+    book has not covered yet; name the chapter.
+  \item Which of your three is wrong for a button and right for a rotary encoder? Say why.
+\end{parts}

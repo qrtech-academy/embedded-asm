@@ -1,0 +1,141 @@
+% Section 4.3, from lectures/L04/appendix/c_stack.md.
+
+\section{The Stack, and How Deep It Goes}
+\label{c4:sec:stack}
+
+\subsection{One pointer, four users, no referee}
+\label{c4:sec:users}
+\code{SP} lives in \code{SPH:SPL} at data space \code{0x5E:0x5D}, it starts at \code{RAMEND}, and
+it moves downwards. Four unrelated things use it and none of them coordinates with the others:
+
+\begin{narrowtable}{@{}ll@{}}
+  \thead{What} & \thead{Costs} \\
+  \midrule
+  \code{rcall} and \code{ret} & 2 bytes, for a return address \\
+  \code{push} and \code{pop} & 1 byte each \\
+  An interrupt & 2 bytes, pushed by the hardware before your handler starts \\
+  Your handler's own saves & 1 byte each \\
+\end{narrowtable}
+
+\textbf{\code{SP} points at the next free byte, not the last used one.} So the number of bytes in
+use is \code{RAMEND - SP}, and the lowest byte actually occupied is one \emph{above} where
+\code{SP} is. That off-by-one is worth getting right once: with \code{SP} down at \code{0x08F0}, it
+is the difference between ``my structure at \code{0x08F0} is safe'' and ``my structure at
+\code{0x08F0} was overwritten''.
+
+\subsection{Counting the worst case}
+\label{c4:sec:worst}
+
+\bookfigure{stack_depth}{Stack use accumulating in Chapter~3's program: nothing in the main loop,
+which calls nothing, two bytes when an interrupt pushes the program counter, eleven after the
+handler saves eight registers and \code{SREG}, thirteen and fifteen for the two nested calls inside
+it.}{c4:fig:depth}
+
+That is Chapter~3's program at its deepest, and every number in it is measured. The rule behind
+them is simple enough to apply to any program:
+\[
+\begin{aligned}
+  \text{bytes} = {} & 2 \times (\text{calls deep in the main program}) \\
+    & {} + 2 + (\text{registers the handler saves}) \\
+    & {} + 2 \times (\text{calls deep inside the handler})
+\end{aligned}
+\]
+The $+\,2$ in the middle is the hardware's, and it is there even for a handler that is nothing but
+\code{reti}. The handler's saves are one byte each, \code{SREG}'s holder included.
+
+\textbf{The worst case is not the common case, and it is the only one worth computing.} The
+interrupt does not arrive politely between main-loop iterations; it arrives while the main loop is
+as deep as it ever gets, because that is the state the program spends its time in. Assume it lands
+at the worst possible moment, because eventually it will.
+
+\textbf{Everything is measurable except the worst moment.} You can watch the stack pointer and
+record how low it went, and this book's harness does exactly that, but a measurement only tells
+you about the interrupts that actually arrived and where they actually landed. The arithmetic tells
+you about the one that has not happened yet. The cross-check in Exercise~\ref{c4:ex:crosscheck} is
+about the two agreeing, and about what it would mean if the measurement came out \emph{lower}.
+
+\subsection{What running out looks like}
+\label{c4:sec:overflow}
+Nothing.
+
+There is no stack limit register, no guard page, no fault and no message. The stack grows down into
+whatever is below it and keeps going. What you observe is one of these, days later:
+\begin{itemize}
+  \item a variable that changes on its own, because a \code{push} landed on it;
+  \item a subroutine that returns somewhere it was never called from, because something wrote over
+    a saved return address;
+  \item a program that restarts for no reason, because that somewhere was unprogrammed flash
+    (Exercise~\ref{c1:ex:program}, part d).
+\end{itemize}
+
+None of those points at the stack, which is what makes the arithmetic worth doing in advance rather
+than the debugging worth doing afterwards.
+
+\textbf{Recursion is the fast way there.} A handler that enables interrupts inside itself, or a
+subroutine that calls itself, adds a frame per repetition with nothing counting them
+(\secref{c3:sec:mustnot}). Neither appears in this book, and both appear in real AVR code.
+
+\subsection{How much room is there really}
+\label{c4:sec:room}
+2048 bytes sounds like a lot until you write the subtraction down.
+
+Chapter~3's program uses 15 bytes of stack at its worst and 17 bytes of structures, one LED and one
+button, which leaves 2016 free. An array of six LEDs adds 42 bytes of structures, and a main loop
+that walks it goes three calls deep, \code{led_array_all_on} into \code{led_on} into
+\code{shift_bits}, so the figures move to 21 and 59, leaving 1968. Neither is close to trouble, and
+that is the point of computing it: you want to know \emph{how much} headroom you have, so that when
+a later change halves it you notice.
+
+Do that subtraction whenever the program grows a call level or a handler, and write the answer
+somewhere the next reader will find it. It is the kind of calculation that is done once, believed
+for a year, and quietly falsified by the third feature nobody re-checked.
+
+\subsection{The stack pointer is a register you may load}
+\label{c4:sec:loadsp}
+Everything above treats \code{SP} as something the hardware moves. It is also an ordinary pair of
+I/O registers, and you may read it and write it like any other.
+
+That is worth saying plainly, because \secref{c1:sec:program} writes \code{SP} once, at reset, and
+then explains that the hardware had already done it, which leaves the impression that touching
+\code{SP} is ceremonial. It is not. It is the only way to answer two questions this section has
+been asking on paper.
+
+\needspace{5\baselineskip}
+\textbf{Reading it: how deep did I actually go?}
+
+\begin{asm}
+    in   r24, SPL
+    in   r25, SPH          ; r25:r24 = SP, and RAMEND - SP is the depth
+\end{asm}
+
+\needspace{5\baselineskip}
+\textbf{Writing it: high byte first.}
+
+\begin{asm}
+    out  SPH, r25
+    out  SPL, r24
+\end{asm}
+
+The order matters and only in one direction. \code{SP} has no shadow register, and unlike
+\code{OCR1A} both halves are directly writable, so the hazard is not a latch, it is the moment in
+between. Write \code{SPL} first and there is one instruction during which the low half is new and
+the high half is old: \code{SP} points somewhere neither value describes, and an interrupt arriving
+in that instruction pushes two bytes there. Writing \code{SPH} first leaves the intermediate value
+inside the \emph{new} region rather than in an arbitrary one. Interrupts being off makes the
+question moot, and writing them in the safe order costs nothing, so the rule is worth following
+rather than reasoning about.
+
+\textbf{These are I/O addresses, and this section has been quoting the other kind.} \code{SPL} is
+data space \code{0x5D} and I/O \code{0x3D}; \code{SPH} is \code{0x5E} and \code{0x3E}. \code{in}
+and \code{out} take the I/O numbers, and \code{m328Pdef.inc} gives you the names, so
+\code{in r24, SPL} is what you write (\secref{c1:sec:iowindow}). Reaching them with \code{lds} and
+\code{sts} works too and costs a cycle more each.
+
+\textbf{What this is for.} Nothing in this book needs it: the drivers you are writing never move
+\code{SP}, and the depth figures in \secref{c4:sec:worst} come from the harness watching \code{SP}
+from outside rather than from your program reading it. It is here because of what the four
+instructions above become when you write them in the other order. Save every register on the stack
+you are on, store \code{SP} somewhere, load \code{SP} from somewhere else, restore every register
+from \emph{that} stack, and \code{ret}, and you have returned onto a stack you were not called on.
+That is a context switch, it is about forty lines, and the two instruction pairs in this section are
+the two that make it a switch rather than a subroutine.

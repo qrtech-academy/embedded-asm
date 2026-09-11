@@ -1,0 +1,52 @@
+% Chapter 2, typeset from lectures/L02: the README is the opener and the closing summary, and
+% each appendix is a section, in the same order and with the same subsections.
+
+\chapter{I/O Ports and Subroutines}
+\label{c2:ch:ports}
+
+{\large\itshape The first driver, and the contract that makes a subroutine reusable.\par}
+
+\begin{chapterbox}{In this chapter}
+\begin{itemize}
+  \item \code{DDRx}, \code{PORTx} and \code{PINx}: three registers per port, and what each of the
+    three actually does, which is more than Chapter~1's two \code{sbi} instructions had to know.
+  \item The internal pull-up, which is a resistor you did not fit and cannot see.
+  \item Writing a one to \code{PINx}, which toggles the output and is not what the name suggests at
+    all.
+  \item Arduino pin numbers against port bits, and why that translation is your driver's first
+    job.
+  \item \code{rcall} and \code{ret}: what goes on the stack, what comes back off it, and what it
+    costs.
+  \item The calling contract: which registers a subroutine may destroy and which it must give
+    back.
+  \item The LED driver: five subroutines, a structure in SRAM, and a cost that depends on the pin.
+\end{itemize}
+\end{chapterbox}
+
+The chapter starts with one pin and its four states. \code{DDRx} and \code{PORTx} are two bits, so
+there are four combinations, and each of them does something different; predict what a floating
+input reads before you are told. Then the pull-up, and the button that reads backwards: a pressed
+button reads zero, which is not a convention anybody chose but falls out of the circuit, and the
+circuit is drawn. Then the translation: Arduino pin 13 is bit 5 of port B, and the mapping is worth
+deriving rather than reading. Then subroutines, properly: what \code{rcall} pushes, what
+\code{ret} does not undo, and the register contract that makes a subroutine safe to call from code
+you did not write. And finally the driver: five subroutines over a structure in SRAM, so that two
+LEDs can exist without the driver knowing there are two.
+
+This chapter calls \code{shift_bits}, and the LED driver does not work without it, so finish
+Chapter~1 first.
+
+Two predictions are worth making before anything runs:
+\begin{itemize}
+  \item what \code{led_on} costs for Arduino pin 13, given what you already know \code{shift_bits}
+    costs.
+  \item whether \code{led_enabled} takes the same time whether the LED is on or off.
+\end{itemize}
+The second is this chapter's cross-check, and the answer is no.
+
+\input{chapters/02/ports}
+\input{chapters/02/subroutines}
+\input{chapters/02/driver}
+\input{chapters/02/board}
+\input{chapters/02/summary}
+\input{chapters/02/exercises}

@@ -1,0 +1,236 @@
+% Section 1.4, from lectures/L01/appendix/d_first_subroutine.md.
+
+\section{Your First Subroutine}
+\label{c1:sec:first}
+
+\subsection{The task}
+\label{c1:sec:task}
+Write two subroutines in \file{drivers/source/utils.asm}, and one program in
+\file{drivers/app/main.asm}.
+
+The subroutines compute \code{1 << n} and \code{~(1 << n)} for a value of \code{n} that is not
+known until the program runs. In C that is one operator each and you would not give it a second
+thought. Here it is a loop, because the AVR has no barrel shifter (\secref{c1:sec:absent}):
+\code{lsl} shifts by exactly one place, and shifting by \code{n} places means going round \code{n}
+times.
+
+That is not a curiosity. Every driver in this book is handed a pin number and has to turn it into
+a bit mask, and these two subroutines are how. \code{led_on} in Chapter~2 calls
+\code{shift_bits}; \code{btn_init} in Chapter~3 calls both. Getting them right now means the rest
+of the book is about peripherals rather than about bit twiddling.
+
+Creating the file is all it takes to switch its tests on; the README beside the suite, in
+\file{lectures/L01/exercises/test}, says how.
+
+\subsection{Where the arguments live}
+\label{c1:sec:args}
+This book follows the AVR C calling convention from the first line of assembly it writes, and
+keeps following it, so that Chapter~6's ``call your assembly from C'' is a demonstration rather
+than a rewrite. The whole of what you need for now:
+
+\begin{booktable}{@{}p{9.4em}L@{}}
+  \thead{Register} & \thead{Role} \\
+  \midrule
+  \code{r24} & First argument, if it is a byte. Also where a byte-sized return value goes. \\
+  \code{r25:r24} & First argument, if it is a pointer or another 16-bit value. \\
+  \code{r22} & Second argument, if it is a byte. \\
+  \code{r18} to \code{r27}, \code{r30}, \code{r31} & \textbf{Call-clobbered.} A subroutine may
+    destroy these freely. \\
+  \code{r2} to \code{r17}, \code{r28}, \code{r29} & \textbf{Call-saved.} A subroutine that uses
+    one must put it back. \\
+\end{booktable}
+
+So both subroutines here take their argument in \code{r24} and leave their result in \code{r24},
+and both may use \code{r18} and \code{r19} as scratch without saving anything.
+
+\subsection{\code{shift_bits}}
+\label{c1:sec:shiftbits}
+Returns \code{1} shifted left by the number of places given.
+
+\begin{narrowtable}{@{}ccl@{}}
+  \thead{Given \code{r24}} & \thead{Returns \code{r24}} & \thead{Because} \\
+  \midrule
+  0 & \code{0x01} & Shifted no times at all. \\
+  1 & \code{0x02} & \\
+  5 & \code{0x20} & Which is bit 5, the Arduino Uno's pin 13. \\
+  7 & \code{0x80} & \\
+  8 & \code{0x00} & The bit has been shifted off the end of an eight-bit register. \\
+\end{narrowtable}
+
+Write it like this:
+\begin{enumerate}
+  \item Put \code{0x01} in a scratch register; this is the value being shifted. Put \code{0} in a
+    second scratch register; this is the count of shifts done so far.
+  \item At the top of the loop, compare the count against \code{r24}. If they are equal, leave the
+    loop.
+  \item Otherwise shift the value left once, add one to the count, and jump back to the top.
+  \item On leaving, move the value into \code{r24} and return.
+\end{enumerate}
+
+Two things about that shape are worth being deliberate about, because they are what the cost
+depends on (\secref{c1:sec:branchcost}):
+
+\textbf{The comparison is at the top, not the bottom.} So an argument of zero does no shifts at
+all, which is what makes \code{shift_bits(0)} return \code{0x01} rather than \code{0x02}. A loop
+with the test at the bottom always runs its body once, and would be wrong for exactly one input,
+which is the input your driver will use for pin 8.
+
+\textbf{The exit branch runs once more than the body does.} That last comparison, the one that
+finds the count has reached \code{r24} and leaves, is a real instruction with a real cost. It is
+the reason the answer is 10 cycles at $n = 0$ and not 7.
+
+The last row of the table is the interesting one. Nothing in the routine says ``stop at eight'';
+the zero falls out of the register being eight bits wide, and the bit simply leaves. A reader
+thinking in C, where \code{1 << 8} is 256, will predict \code{0x100} and there is nowhere to put
+it.
+
+\subsection{\code{shift_bits_inverted}}
+\label{c1:sec:inverted}
+Returns the complement of the same value: \code{~(1 << n)}.
+
+\begin{narrowtable}{@{}cc@{}}
+  \thead{Given \code{r24}} & \thead{Returns \code{r24}} \\
+  \midrule
+  0 & \code{0xFE} \\
+  1 & \code{0xFD} \\
+  5 & \code{0xDF} \\
+  7 & \code{0x7F} \\
+  8 & \code{0xFF} \\
+\end{narrowtable}
+
+The obvious implementation is to call \code{shift_bits} and complement the result with
+\code{com}. Do not; write it as its own loop. Start the scratch value at \code{0xFE} instead of
+\code{0x01}, and each time round shift left \emph{and then increment}, which shifts a zero in at
+the bottom and turns it back into a one.
+
+The reason for the detour is that this routine exists to produce a mask for clearing a bit, and
+Chapter~2's driver calls it directly. Writing it as its own loop also makes the point that
+\secref{c1:sec:branchcost} is really making: two routines differing by a single \code{inc} differ in
+cost by that \code{inc} on every trip, and you can say by how much before running either.
+
+\subsection{Why \code{r18} and \code{r19}}
+\label{c1:sec:whyr18}
+Use \code{r18} and \code{r19} as the scratch registers, not \code{r16} and \code{r17}.
+
+Both pairs are in the upper half, so both can take an \code{ldi} (\secref{c1:sec:regfile}). The
+difference is the calling convention in \secref{c1:sec:args}: \code{r18} and \code{r19} are
+call-clobbered, and \code{r16} and \code{r17} are call-saved. A subroutine that writes to
+\code{r16} without restoring it has broken its contract with whoever called it, and the caller has
+no way to know.
+
+Right now nothing calls these subroutines but a test, and a test does not care. By Chapter~6 the
+caller may be a C function that had a live value in \code{r16}, and then the bug is a variable
+that changes on its own across a function call, which is about as unpleasant a thing to debug as
+this book contains. Choosing the right registers now costs nothing and means that never happens.
+
+If you are comparing against AVR assembly you have found elsewhere, note that a good deal of it
+uses \code{r16} and \code{r17} here. It works, right up until it does not.
+
+\subsection{The program}
+\label{c1:sec:program}
+\file{drivers/app/main.asm} is the first thing in this book that is a program rather than a
+subroutine. For this chapter it needs four things:
+
+\textbf{A reset vector.} The first word of program memory is where the machine starts, so the
+first instruction in your file has to be a jump to your code. Use \code{.org 0} followed by an
+\code{rjmp}.
+
+\textbf{A stack pointer.} \code{rcall} pushes a return address and \code{ret} pops one, and both
+use \code{SP}. Set it to \code{RAMEND} by writing \code{high(RAMEND)} to \code{SPH} and then
+\code{low(RAMEND)} to \code{SPL}, with \code{out} rather than \code{sts}
+(\secref{c1:sec:iowindow}). \code{low()} and \code{high()} are AVRASM2's; GNU \code{as} spells the
+same two functions \code{lo8()} and \code{hi8()}, which matters once in Chapter~6 and nowhere
+else.
+
+The hardware already does this on the ATmega328P, and it does it after \textbf{every} reset,
+watchdog resets included. You will find a good deal of AVR code carrying a comment saying
+otherwise; on this device that comment is wrong, and repeating it is how the belief survives.
+
+Write the four instructions anyway, for the two reasons that are actually true. Older AVRs reset
+\code{SP} to \code{0x0000} rather than to \code{RAMEND}, so code that omits this is not portable
+to them, and the failure there is a stack that grows down out of memory on the first
+\code{rcall}. And a reset is not the only way to arrive at your code: a bootloader that jumps into
+it has performed no reset at all, and \code{SP} holds whatever the bootloader left in it.
+
+Neither of those applies to anything in this book. Knowing \emph{which} reason applies, rather
+than carrying a habit you cannot justify, is the point.
+
+\textbf{Something to do, and somewhere to stop.} Call \code{shift_bits} with an argument, then sit
+in a loop that jumps to itself. There is no operating system to return to; a program that runs off
+the end of its own code executes whatever is in flash after it, which is \code{0xFF} repeated, and
+the results are not interesting. An infinite loop is how an embedded program ends.
+
+\textbf{And something you can see.} Light the LED on PB5.
+
+\begin{asm}
+    sbi  DDRB, 5                ; PB5 is an output
+    sbi  PORTB, 5               ; and it is high
+\end{asm}
+
+That is the whole of it, and every part of it is already in this chapter. \code{DDRB} is
+\code{0x04} and \code{PORTB} is \code{0x05}, both I/O addresses, so \code{sbi} reaches them and
+\code{sts} would not (\secref{c1:sec:iowindow}); \code{sbi} costs two cycles and not one, which
+\secref{c1:sec:costs} says and which is worth noticing now rather than in Chapter~5 when you are
+counting a timer's handler.
+
+The one thing that is new is what the two registers mean, and it is one sentence:
+\textbf{\code{DDRx} decides whether a pin is an output, and \code{PORTx} decides what an output
+drives.} Both are per-bit, both default to zero, and zero means ``input, not driven''. So an LED
+needs both writes and in that order: setting \code{PORTB} first would briefly enable a pull-up on
+an input pin instead, which is a different thing that happens to look similar.
+
+PB5 is Arduino pin 13, which is the one with an LED already fitted to the board, and the reason
+this book lights that one rather than any other. On a real Uno there is a resistor beside it; in
+the simulator there is nothing to protect, and \secref{c2:sec:resistor} is where that stops being a detail.
+
+\textbf{Two instructions, one pin, hard-coded.} That is deliberate, and it is exactly as far as
+this chapter goes. It only works for PB5, it cannot be told which LED to light, and nothing else
+in the program can reuse it. Turning it into something a program can call with a pin number is
+Chapter~2, and so is the reason that turns out to be more work than it sounds.
+
+\subsection{How to check it}
+\label{c1:sec:check}
+Three things, in this order.
+
+\textbf{Does it assemble?}
+
+\begin{shell}
+make build
+\end{shell}
+
+\textbf{Does it do the right thing, and cost the right amount?}
+
+\begin{shell}
+make test
+\end{shell}
+
+Nine tests were passing before you wrote anything, eighteen once \file{utils.asm} exists, and
+twenty once \file{main.asm} does. If \code{Utils.SubroutinesAreDefined} fails while the file is
+plainly there, the label is spelled differently from the name the test asks for, or the file did
+not assemble (\secref{c1:sec:avra}).
+
+The tests for \file{main.asm} work differently from the rest, and it is worth knowing why before
+one of them fails. A subroutine can be called: a test sets the program counter to
+\code{shift_bits}, puts a number in \code{r24} and reads \code{r24} back. A program cannot. It has
+no arguments, it never returns, and the only way to find out what it does is to \textbf{let it
+run} and then look at the machine:
+
+\begin{cppcode}
+mcu.run(2000);                      // 2000 cycles of your program
+mcu.data(0x24) & (1 << 5)           // DDRB, in the data space
+\end{cppcode}
+
+Note the \code{0x24}. The test reads the \textbf{data space} address where your program wrote the
+\textbf{I/O} address \code{0x04}, and both are correct, because they are two names for one
+register. That is \secref{c1:sec:iowindow} again, seen from the third side, and it is the last time
+this book will point it out.
+
+\textbf{What does it actually cost?}
+
+\begin{shell}
+make measure SYMBOL=shift_bits ARG=5
+\end{shell}
+
+Do not run that until you have predicted the answer. Predicting it by hand, and then reconciling
+the prediction against the measurement, is the cross-check in Exercise~\ref{c1:ex:crosscheck}, and
+it is the exercise this whole chapter exists to set up.

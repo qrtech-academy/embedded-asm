@@ -1,0 +1,189 @@
+% Section 1.6, from lectures/L01/appendix/e_exercises.md.
+
+\section{Exercises}
+\label{c1:sec:exercises}
+
+\begin{aside}
+\textbf{How to check your work.} Exercises \ref{c1:ex:firstsub} and \ref{c1:ex:program} are checked by
+this chapter's test suite: write the file at the path the specification gives, then run
+\code{make test} from the repository root. Nothing has to be registered; creating the file is what
+switches its tests on.
+
+The rest will have worked solutions in the companion repository, published later as
+\file{lectures/L01/appendix/f_solutions.md}, and the hand calculations have short answers in
+Appendix~\ref{app:answers}. Work each one before you read it. Where an exercise
+has a plausible wrong answer, the solution gives that too, and says why
+it is wrong, because being told the right answer teaches you less than being shown the one you
+nearly gave.
+
+\textbf{No hardware is needed for any of this.} Everything is written, assembled, simulated and
+measured on your laptop.
+\end{aside}
+
+Each exercise is labelled with its kind. There is exactly one \textbf{Cross-check} per chapter,
+and in this one it is Exercise~\ref{c1:ex:crosscheck}.
+
+% ------------------------------------------------------------------------------------------
+\exercise{The upper half}{Recall}
+\label{c1:ex:upper}
+\begin{parts}
+  \item State which registers \code{ldi} can name, and which it cannot.
+  \item Explain \emph{why}, from the instruction's encoding rather than from the datasheet's
+    table. Your answer should mention a specific number of bits.
+  \item You are writing a routine that needs six working registers, and you have used \code{r16}
+    to \code{r21}. A seventh value is a constant you need to load. Somebody suggests \code{r10},
+    which is free. What does that cost you, in instructions and in cycles, every time you set it
+    up?
+  \item Name two instructions other than \code{ldi} that have the same restriction, and one
+    instruction that does not.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Assembling four instructions by hand}{Hand calculation}
+\label{c1:ex:assemble}
+Using the encoding in \secref{c1:sec:encoding}, and nothing else, work out the 16-bit word each of
+these assembles to. Show the four nibbles for at least the first one.
+\begin{parts}
+  \item \code{ldi r16, 0x2A}
+  \item \code{ldi r24, 0x2A}
+  \item \code{ldi r31, 0xFF}
+  \item \code{ldi r20, 0x03}
+  \item One of these is not a legal instruction: \code{ldi r15, 0x2A}. Say what the assembler does
+    with it, and what would go wrong if it silently produced a word anyway.
+\end{parts}
+
+\noindent\textbf{Check yourself:} the encoding is \code{1110 KKKK dddd KKKK} with
+\code{d = Rd - 16}, and the assembler will settle it. Put the instructions in a \code{.asm} file,
+assemble it, and run \code{avr-objdump -D -m avr:5 -b ihex} over the hex; the bytes come out
+reversed, for the reason in \secref{c1:sec:disasm}.
+
+% ------------------------------------------------------------------------------------------
+\exercise{Which space, which instruction}{Recall}
+\label{c1:ex:spaces}
+For each of the following, say which address space it names, what is stored there, and which
+instruction or instructions can reach it.
+\begin{parts}
+  \item Data space \code{0x0005}
+  \item Data space \code{0x0025}
+  \item I/O address \code{0x05}
+  \item Data space \code{0x0100}
+  \item Program word address \code{0x0006}
+  \item EEPROM address \code{0x0000}
+  \item Two of the above name the same physical register. Which two, and what happens if you use
+    one of the two numbers with an instruction expecting the other?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Choosing the branch}{Design}
+\label{c1:ex:branch}
+\code{r19} holds a loop counter and \code{r24} holds a limit. Both are unsigned.
+\begin{parts}
+  \item You want to leave the loop when the counter has reached the limit. Write the two
+    instructions, and say which flag the second one reads.
+  \item You want to stay in the loop while the counter is strictly below the limit. Write the two
+    instructions.
+  \item Somebody inserts an \code{inc r19} between the comparison and the branch. Explain what
+    breaks, and why the symptom is a branch that goes the wrong way rather than an assembler
+    error.
+  \item Somebody inserts a \code{mov r20, r19} in the same place instead. Explain why this one is
+    harmless, and say where you would look it up rather than guessing.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Your first subroutines}{Code}
+\label{c1:ex:firstsub}
+Write \code{shift_bits} and \code{shift_bits_inverted} in \file{drivers/source/utils.asm}, to the
+specification in \secref{c1:sec:first}.
+\begin{parts}
+  \item Write both. Use \code{r18} and \code{r19} as scratch, for the reason in
+    \secref{c1:sec:whyr18}.
+  \item Assemble with \code{make build}, then disassemble your own routine with
+    \code{avr-objdump -D -m avr:5 -b ihex drivers/build/drivers.hex} and read it against what you
+    wrote. Both flags are required, for the reason in \secref{c1:sec:disasm}: a hex file says nothing
+    about its own architecture. At least one line will have come back as a different instruction
+    than you typed. Say which, and why that is not a mistake.
+  \item Run \code{make test}.
+  \item Before running anything else: predict what \code{shift_bits} returns for an argument of 8,
+    and say what a reader thinking in C would predict instead.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{A program that runs on its own}{Code}
+\label{c1:ex:program}
+Write \file{drivers/app/main.asm} to the specification in \secref{c1:sec:program}.
+\begin{parts}
+  \item Write the reset vector, the stack pointer initialisation, a call to \code{shift_bits}, the
+    two instructions that light PB5, and the final loop.
+  \item \code{make build} should now report that it built \file{app.hex} as well as
+    \file{drivers.hex}, and \code{make test} should report two more passing tests than it did
+    before.
+  \item The hardware sets \code{SP} to \code{RAMEND} at reset by itself, so on a cold start your
+    four instructions change nothing. Give the case where they do change something, and say what
+    would go wrong without them.
+  \item Remove the final loop and describe, without running it, what the machine does when it
+    reaches the end of your code. What is in flash after your last instruction?
+  \item Swap the two \code{sbi} instructions, so that \code{PORTB} is written before \code{DDRB}.
+    The LED still ends up lit. Say what the pin is doing during the one instruction in between,
+    and why that is not the same thing as being an output that happens to be low.
+  \item You wrote \code{sbi DDRB, 5}, and the test that checks it reads data space address
+    \code{0x24}. Both numbers are right. Explain, and give the one instruction that would write the
+    same register using \code{0x24} directly.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Counting by hand}{Hand calculation}
+\label{c1:ex:counting}
+Using only the table in \secref{c1:sec:costs} and the rule in \secref{c1:sec:branchcost}, and without
+running anything:
+\begin{parts}
+  \item Count the cycles \code{shift_bits} takes for an argument of 0. Show your working as a line
+    per instruction, with how many times each one runs.
+  \item Do the same for an argument of 7.
+  \item From those two, write down the general formula in terms of $n$.
+  \item How many times does the \code{cp} execute when $n$ is 3? How many times does the
+    \code{breq}? How many of those \code{breq} executions are taken? These three numbers are not
+    all the same, and getting them confused is the usual reason a hand count comes out wrong.
+  \item Do the same for \code{shift_bits_inverted}, and state the difference between the two
+    formulas in one sentence about a single instruction.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise[fillaccent]{What a subroutine costs}{Cross-check}
+\label{c1:ex:crosscheck}
+\emph{Compute it by hand, measure it, reconcile.}
+
+This is the exercise the chapter exists for. Do the parts in order, and write each answer down
+before starting the next; the point is lost if you look at the measurement first.
+\begin{parts}
+  \item \textbf{By hand.} From the exercise above, you have a formula. Evaluate it for $n = 0$ and
+    for $n = 7$, and convert both to microseconds at 16\,MHz. One cycle is 62.5 nanoseconds, and
+    doing that conversion in your head once is worth more than a function that does it for you.
+  \item \textbf{The table, in full.} Write out the count for $n = 7$ in the shape
+    \secref{c1:sec:onpaper} gives: one row per instruction, its cost, how many times it runs, and the
+    product. You will need it in (d), and a formula you cannot decompose is a formula you cannot
+    find the mistake in.
+  \item \textbf{By measurement.}
+\begin{shell}
+make measure SYMBOL=shift_bits ARG=0
+make measure SYMBOL=shift_bits ARG=7
+\end{shell}
+  \item \textbf{Reconcile the two.} They should agree exactly. If they do not, the table is more
+    likely wrong than the simulator, and the row to check first is the \code{cp}, which runs
+    $n + 1$ times rather than $n$. Find the mistake before continuing rather than adjusting the
+    formula until it matches.
+  \item \textbf{Now the call site.} Your \file{main.asm} does not just execute \code{shift_bits};
+    it loads an argument and calls it. Count, by hand, the cycles of those two extra instructions,
+    and write down what a loop that called \code{shift_bits(7)} over and over would cost \emph{per
+    iteration}.
+  \item \textbf{The discrepancy.} Your answer to (e) is larger than your answer to (a). State the
+    difference in cycles, and state it again as a percentage of the (a) figure, once for $n = 0$
+    and once for $n = 7$. \textbf{The two percentages are very different.} Explain why, in one
+    sentence, without using the word ``overhead''.
+  \item \textbf{What it means for a driver.} Chapter~2's \code{led_on} calls \code{shift_bits}
+    with a pin number. Using your formula, how many times longer does \code{led_on} take for
+    Arduino pin 13 than for Arduino pin 8? (Pin 13 is bit 5 of port B; pin 8 is bit 0 of port B.)
+    Say whether that difference would matter, and give one situation in which it would.
+  \item \code{make measure} reports a figure that does not include the \code{rcall}. Is that a
+    defect in the tool? Give the case for and against, in a sentence each, and say what you would
+    have it do instead if you disagree with the choice.
+\end{parts}

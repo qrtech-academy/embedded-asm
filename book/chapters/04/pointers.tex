@@ -1,0 +1,126 @@
+% Section 4.1, from lectures/L04/appendix/a_pointers.md.
+
+\section{The Pointer Registers}
+\label{c4:sec:pointers}
+
+\subsection{Six registers, three pointers}
+\label{c4:sec:six}
+The AVR has no 16-bit registers. What it has is three \emph{pairs} of 8-bit registers that certain
+instructions treat as one 16-bit address:
+
+\begin{narrowtable}{@{}llll@{}}
+  \thead{Pointer} & \thead{Low byte} & \thead{High byte} & \thead{Displacement?} \\
+  \midrule
+  \code{X} & \code{r26} (\code{XL}) & \code{r27} (\code{XH}) & no \\
+  \code{Y} & \code{r28} (\code{YL}) & \code{r29} (\code{YH}) & yes \\
+  \code{Z} & \code{r30} (\code{ZL}) & \code{r31} (\code{ZH}) & yes, and \code{lpm} uses it \\
+\end{narrowtable}
+
+The low byte comes first, which is the same order everything else on this machine uses and the
+reason \code{movw r30, r24} copies \code{r25:r24} into \code{Z} in one instruction: \code{movw}
+copies a pair to a pair, and both pairs are low-byte-first.
+
+They are still ordinary registers. Nothing stops you keeping a loop counter in \code{r30}, and
+\code{ldi r30, 0} is legal because \code{r30} is in the upper half (\secref{c1:sec:regfile}). What
+changes is that the moment you want to reach memory through a pointer, these six are the only ones
+that can, so a subroutine that has casually filled \code{Z} with something else has to put it back
+first.
+
+\textbf{\code{Y} is worth avoiding.} \code{r28} and \code{r29} are call-saved
+(\secref{c2:sec:contract}), so a subroutine using \code{Y} must push both halves on entry and pop
+them before returning: four instructions and eight cycles that \code{X} and \code{Z} cost nothing.
+Compiled C uses \code{Y} as a frame pointer, which is why it is call-saved and why leaving it alone
+is the easy choice.
+
+\subsection{One instruction, four ways}
+\label{c4:sec:modes}
+
+\bookfigure{addressing_modes}{The four addressing modes, one strip of memory each, showing which
+byte is read and where the pointer sits before and after: \code{ld} reads at \code{Z} and leaves
+it, \code{ld Z+} reads then advances, \code{ld -Z} retreats then reads, and \code{ldd Z+3} reads
+three along without moving \code{Z}.}{c4:fig:modes}
+
+All four put a byte in the destination register and all four cost \textbf{two cycles}. What differs
+is the byte they chose and where the pointer is afterwards, and neither of those is visible in the
+register you just loaded.
+
+\begin{narrowtable}{@{}lll@{}}
+  \thead{Form} & \thead{Reads} & \thead{Leaves the pointer} \\
+  \midrule
+  \code{ld r16, Z} & at \code{Z} & unchanged \\
+  \code{ld r16, Z+} & at \code{Z} & one higher \\
+  \code{ld r16, -Z} & at \code{Z - 1} & one lower \\
+  \code{ldd r16, Z+q} & at \code{Z + q} & unchanged \\
+\end{narrowtable}
+
+\code{st} is the mirror of all four, and the operand order flips: the pointer comes first when
+storing and second when loading. Writing them the other way round is a natural mistake and the
+assembler's message about it is not especially helpful.
+
+\textbf{The sign is on the side the change happens.} \code{Z+} increments \emph{after} the access
+and \code{-Z} decrements \emph{before} it, which is why walking forwards uses the first and walking
+backwards uses the second, and why the two are not the mirror images they look like.
+
+\subsection{Displacement, and its two limits}
+\label{c4:sec:displacement}
+\code{ldd} reads the byte a constant number of places past \code{Z} without moving \code{Z}, and
+this is what makes structures cheap: a field at offset 6 is one two-cycle instruction away, not an
+add, a load and a subtract.
+
+Two limits shape how you use it.
+
+\textbf{The displacement is a constant, and it is at most 63.} It is encoded in the instruction,
+so it cannot come from a register and cannot be worked out at run time. A structure larger than
+64 bytes has fields \code{ldd} cannot reach, and an array index is never a displacement.
+
+\textbf{\code{X} has no displacement form at all.} There is no \code{ldd} for it; the encoding space
+went elsewhere. So \code{X} is the pointer for walking, \code{Z} is the pointer for structures, and
+a driver that needs both at once uses both, which is exactly what the LED driver does: \code{Z}
+holds the structure and \code{X} holds the port register address it read out of it.
+
+\subsection{Program memory needs its own instruction}
+\label{c4:sec:lpm}
+\code{lpm} reads a byte of \textbf{program} memory through \code{Z}, and it is the only instruction
+that can.
+
+Three things are different about it, and all three follow from the Harvard split
+(\secref{c1:sec:spaces}):
+\begin{itemize}
+  \item \textbf{It costs three cycles}, not two.
+  \item \textbf{\code{Z} holds a byte address into flash}, so reaching word address \code{0x0006}
+    means putting \code{0x000C} in \code{Z}. This is the same doubling as the vector table
+    (\secref{c3:sec:table}), and it catches people twice rather than once.
+  \item \textbf{The result lands in \code{r0}} unless you name a destination: \code{lpm} on its own
+    writes \code{r0}, and \code{lpm Rd, Z} or \code{lpm Rd, Z+} writes the register you asked for.
+    One more reason to leave \code{r0} alone.
+\end{itemize}
+
+The failure mode when you forget is silent and specific: an ordinary \code{ld} with a flash address
+in \code{Z} reads \emph{SRAM} at that address and gets whatever is there. Nothing is checked, and a
+constant table you carefully placed in program memory reads back as your own variables.
+
+This book does not use \code{lpm} for anything. It is here because the moment you want a lookup
+table you will need it, and because ``a pointer is a pointer'' is the intuition it breaks.
+
+\subsection{What a pointer costs}
+\label{c4:sec:cost}
+Worth having the numbers, because the reason to use displacement addressing is not elegance.
+
+\begin{booktable}{@{}Lp{6.2em}p{3.2em}@{}}
+  \thead{Doing this} & \thead{Instructions} & \thead{Cycles} \\
+  \midrule
+  Read a field at a known offset, with \code{ldd} & 1 & 2 \\
+  The same, by adding the offset to \code{Z} and taking it off again & 3 & 6 \\
+  Copy a structure address into \code{Z} with \code{movw} & 1 & 1 \\
+  Advance a pointer by 63 or less, with \code{adiw} & 1 & 2 \\
+  Advance a pointer by more than 63 & 2 & 2 \\
+\end{booktable}
+
+\code{adiw} adds an immediate to a register pair, and it has limits of its own: \textbf{the
+immediate is at most 63}, and it works only on \code{r24}, \code{r26}, \code{r28} and \code{r30}.
+Advancing by more than that takes \code{subi} and \code{sbci} with the negated value, which is two
+instructions and reads strangely the first time. Subtracting a negative is how you add to a pair,
+because there is no \code{addi} and there never was.
+
+That is not a detail you need to enjoy. It is one you need to recognise, because it is what walking
+an array of seven-byte structures looks like.

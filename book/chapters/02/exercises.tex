@@ -1,0 +1,184 @@
+% Section 2.6, from lectures/L02/appendix/e_exercises.md.
+
+\section{Exercises}
+\label{c2:sec:exercises}
+
+\begin{aside}
+\textbf{How to check your work.} Exercise~\ref{c2:ex:driver} is checked by this chapter's test
+suite: write the file at the path the specification gives, then run \code{make test}. The suite is
+cumulative, so it runs Chapter~1's \code{shift_bits} tests too; if something you write here
+breaks it, this is where it shows up.
+
+The rest will have worked solutions in the companion repository, published later as
+\file{lectures/L02/appendix/f_solutions.md}, and the hand calculations have short answers in
+Appendix~\ref{app:answers}. Work each one before you read it.
+
+\textbf{No hardware is needed for any of this.} \Secref{c2:sec:board} is optional and nothing
+depends on it.
+\end{aside}
+
+Each exercise is labelled with its kind. There is exactly one \textbf{Cross-check}, and here it is
+Exercise~\ref{c2:ex:crosscheck}.
+
+% ------------------------------------------------------------------------------------------
+\exercise{Four states}{Recall}
+\label{c2:ex:states}
+\begin{parts}
+  \item Give the four combinations of \code{DDRx} and \code{PORTx} for a single pin, and say what
+    each one does to that pin.
+  \item Which of the four is a mistake rather than a choice? Say what a program reading it gets.
+  \item \code{PINx} is not in that table. Give both of the things it does, and say why neither of
+    them is what its name suggests.
+  \item You want to toggle one output pin. Give the one-instruction way and the three-instruction
+    way, and one reason to prefer the short one that is not about speed.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Wiring a button}{Design}
+\label{c2:ex:button}
+A button is wired between an ATmega328P pin and ground, with nothing else attached.
+\begin{parts}
+  \item Give the values of \code{DDRx} and \code{PORTx} for that pin, and say what each one is
+    doing.
+  \item What does \code{PINx} read when the button is not pressed? When it is?
+  \item A driver subroutine \code{btn_pressed} should return 1 when the button is down. Write, in
+    words, what it has to do to the bit it read, and say why.
+  \item Somebody proposes leaving \code{PORTx} at 0 and fitting an external pull-down resistor to
+    ground, wiring the button to 5\,V instead. Their polarity is now the intuitive one. Give one
+    real advantage of their scheme and two reasons nobody does it.
+  \item Your driver reads the pin every millisecond and counts a press each time it sees a 1 then
+    a 0. Presses are being counted several times each. Explain, without using the word
+    ``software''.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Translating pin numbers}{Hand calculation}
+\label{c2:ex:translate}
+For Arduino pins \textbf{3}, \textbf{8} and \textbf{13}, give the port, the bit number, the mask,
+and the data space addresses of the three port registers. Do this from \secref{c2:sec:pinmap} and
+\secref{c1:sec:iowindow}, not from a table you have already been shown.
+\begin{parts}
+  \item Fill in the three rows.
+  \item What is the mask for pin 8, and what would it be if you forgot to subtract 8 first? Say
+    what the LED does in each case.
+  \item Arduino pins stop at 13. Port B has eight bits. What are the other two, and why can you not
+    use them?
+\end{parts}
+
+\noindent\textbf{Check yourself:} the port and bit for every pin are in \secref{c2:sec:pinmap}, and
+deriving a row is quicker than looking it up.
+
+% ------------------------------------------------------------------------------------------
+\exercise{What a call leaves behind}{Recall}
+\label{c2:ex:call}
+\begin{parts}
+  \item An \code{rcall} at byte address \code{0x0A} calls a subroutine. What two things does the
+    instruction do, in order?
+  \item Exactly what value goes on the stack? Say whether it is a byte address or a word address,
+    and give the number.
+  \item Which byte of it ends up at the higher address?
+  \item \code{SP} was \code{0x08FF}. What is it inside the subroutine, and what is it after
+    \code{ret}?
+  \item After the \code{ret}, what is stored at \code{0x08FF}?
+  \item A subroutine does one \code{push} and no \code{pop}, then \code{ret}. Describe what
+    happens, and say why there is no error message.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The LED driver}{Code}
+\label{c2:ex:driver}
+Write \file{drivers/source/led.asm} to the specification in \secref{c2:sec:driver}.
+\begin{parts}
+  \item Write all five subroutines. \code{.include "led.inc"} for the field offsets.
+  \item Run \code{make test}.
+  \item Disassemble your \code{led_init} and count how many instructions run in the case where the
+    pin number is rejected. Compare it against the case where it is accepted.
+  \item Deliberately move the range check to \emph{after} the structure is filled in, rebuild, and
+    say which test catches it. Then put it back.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Read, modify, write}{Design}
+\label{c2:ex:rmw}
+\begin{parts}
+  \item Write the three-instruction sequence that sets one bit of a port register, given the mask
+    in \code{r24} and the register's address in \code{X}.
+  \item Somebody replaces it with a single \code{st X, r24}. Their LED works. Describe precisely
+    what else on that port stops working, and say why their own test did not catch it.
+  \item Which test in this chapter's suite does catch it? Look it up.
+  \item \code{led_toggle} needs no read-modify-write at all. Say why, and give the one property
+    that gives it besides being shorter.
+  \item The AVR has \code{sbi} and \code{cbi}, which set and clear one bit of a low I/O register in
+    a single instruction. Give the reason this driver cannot use them, and note that it has
+    nothing to do with speed.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Predicting the driver's cost}{Hand calculation}
+\label{c2:ex:predict}
+You know from Chapter~1 that \code{shift_bits} costs $6n + 10$ cycles and
+\code{shift_bits_inverted} costs $7n + 10$, where $n$ is the number of shifts.
+\begin{parts}
+  \item Without counting the rest of \code{led_on}, say how much more it must cost for Arduino pin
+    13 than for pin 8, and show why.
+  \item Do the same for \code{led_off}.
+  \item \code{led_init} calls both shift routines once each. How much more does it cost for pin 13
+    than for pin 8?
+  \item Which of the five subroutines is the cheapest for a given pin, and why?
+  \item Explain why you can answer all of the above without knowing how the rest of each
+    subroutine is written.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise[fillaccent]{A driver whose cost depends on its argument}{Cross-check}
+\label{c2:ex:crosscheck}
+\emph{Compute it by hand, measure it, reconcile.}
+
+Do the parts in order and write each answer down before starting the next.
+\begin{parts}
+  \item \textbf{By hand.} From Exercise~\ref{c2:ex:predict}, predict the difference in cycles
+    between \code{led_on} for Arduino pin 13 and \code{led_on} for pin 8. Convert it to
+    microseconds at 16\,MHz.
+  \item \textbf{In full, on paper.} Write the count out in the shape \secref{c1:sec:onpaper} gives,
+    once for bit 0 and once for bit 5. Your table has to include the nested call, so it needs a row
+    for the \code{rcall} and then every row of \code{shift_bits} itself. Do this before (c).
+  \item \textbf{By measurement.}
+\begin{shell}
+make measure CALLS="led_init:0x0200:8 led_on:0x0200"
+make measure CALLS="led_init:0x0200:13 led_on:0x0200"
+\end{shell}
+    Two calls, because \code{led_on} needs a structure that \code{led_init} had to build first.
+  \item \textbf{Reconcile.} The \textbf{difference} between the two pins should come out the same
+    in both. If your absolute figures disagree while the difference agrees, say what that tells you
+    about where the error is, and find it: a constant offset is a row you left out of the table,
+    and it is the same row for both pins.
+  \item \textbf{Now the asymmetry.} Predict whether \code{led_enabled} takes the same number of
+    cycles when the LED is on as when it is off. Write the prediction down, then measure both:
+\begin{shell}
+make measure CALLS="led_init:0x0200:13 led_on:0x0200 led_enabled:0x0200"
+make measure CALLS="led_init:0x0200:13 led_off:0x0200 led_enabled:0x0200"
+\end{shell}
+  \item \textbf{The discrepancy.} State the difference in cycles and explain it in one sentence.
+    Then say what it would take to write a version of \code{led_enabled} whose cost did
+    \textbf{not} depend on the answer, and whether you think it is worth doing.
+  \item \textbf{What it means.} You are bit-banging a protocol that needs a pulse held for exactly
+    5\,µs, and you are using this driver. Say which of the five subroutines you could use inside
+    that pulse and which you could not, and give the one change to the \emph{wiring} that would
+    make the problem smaller.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{A program that blinks}{Code}
+\label{c2:ex:blink}
+Extend \file{drivers/app/main.asm} so that it initialises the LED on pin 13 and toggles it
+forever.
+\begin{parts}
+  \item Write it. There is no delay routine yet, so it will toggle as fast as the loop runs.
+  \item Work out how fast that is, in cycles per toggle, from your \code{led_toggle} cost and the
+    loop's own \code{rjmp}. Convert it to a frequency.
+  \item An LED toggling at that frequency does not look like it is blinking. Say what it looks like
+    and why, and what would have to change for it to blink visibly. Chapter~5 is where you fix it
+    properly.
+  \item \code{make build} should report that it built \file{app.hex}. If you own a board,
+    \secref{c2:sec:board} will put it on one.
+\end{parts}

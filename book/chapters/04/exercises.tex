@@ -1,0 +1,180 @@
+% Section 4.6, from lectures/L04/appendix/e_exercises.md.
+
+\section{Exercises}
+\label{c4:sec:exercises}
+
+\begin{aside}
+\textbf{How to check your work.} Exercise~\ref{c4:ex:array} is checked by this chapter's test
+suite: write the file at the path the specification gives, then run \code{make test}. The suite is
+cumulative and runs Chapter~1 to Chapter~3's tests too.
+
+The rest will have worked solutions in the companion repository, published later as
+\file{lectures/L04/appendix/f_solutions.md}, and the hand calculations have short answers in
+Appendix~\ref{app:answers}. Work each one before you read it.
+
+\textbf{No hardware is needed for any of this.}
+\end{aside}
+
+Each exercise is labelled with its kind. There is exactly one \textbf{Cross-check}, and here it is
+Exercise~\ref{c4:ex:crosscheck}.
+
+% ------------------------------------------------------------------------------------------
+\exercise{Three pointers}{Recall}
+\label{c4:ex:pointers}
+\begin{parts}
+  \item Name the three pointer register pairs and the registers each is made of, and say which
+    register of a pair holds the high byte.
+  \item Which of the three has no displacement form, and which one does compiled C reserve?
+  \item \code{movw r30, r24} copies a pointer in one instruction. Say why one instruction is enough,
+    and what would be needed if the two pairs did not agree about byte order.
+  \item Nothing stops you putting a loop counter in \code{r30}. Give the situation in which that
+    turns out to be expensive.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Four ways to read a byte}{Hand calculation}
+\label{c4:ex:fourways}
+\code{Z} holds \code{0x0204}. The bytes at \code{0x0202} to \code{0x0208} are, in order:
+\code{11 22 33 44 55 66 77}.
+
+For each of the following, give the value loaded into \code{r16} and the value of \code{Z}
+afterwards:
+\begin{parts}
+  \item \code{ld r16, Z}
+  \item \code{ld r16, Z+}
+  \item \code{ld r16, -Z}
+  \item \code{ldd r16, Z+3}
+  \item Two of the four leave \code{Z} unchanged. Which, and why is that the property that makes
+    structures cheap?
+  \item All four cost the same. How many cycles, and what does that say about choosing between
+    them?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Which pointer to use}{Design}
+\label{c4:ex:which}
+\begin{parts}
+  \item A subroutine walks a buffer forwards, one byte at a time, and also has to read fields of a
+    structure at known offsets. How many pointer registers does it need, which would you choose,
+    and why not the third?
+  \item A colleague's subroutine uses \code{Y} and does not save it. Say what breaks, when, and why
+    the symptom appears in their caller rather than in their subroutine.
+  \item Write down, in words, the four instructions a subroutine using \code{Y} has to add, and
+    give their total cost in cycles.
+  \item \code{ldd} cannot reach a displacement of 70. Give two ways to read that byte anyway, and
+    say what each costs.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Array arithmetic}{Hand calculation}
+\label{c4:ex:arrays}
+An array of LED structures begins at \code{0x0300}.
+\begin{parts}
+  \item Give the address of entries 0, 1, 2 and 5.
+  \item What is the stride, and where is it declared?
+  \item A colleague advances the pointer by 6 instead. Give the address their code computes for
+    entry 2, say which byte of which real entry that is, and describe what the driver would then
+    read as a port register address.
+  \item Their code produces no error and their first LED works. Explain both.
+  \item An array of \emph{button} structures begins at the same address. Where is entry 3, and why
+    is the answer different?
+  \item How many LED structures fit in the ATmega328P's SRAM if nothing else used any of it? How
+    many buttons? Say why neither number is the real limit on how many drivers a program can have.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The LED array}{Code}
+\label{c4:ex:array}
+Write \file{drivers/source/led_array.asm} to the specification in \secref{c4:sec:build}.
+\begin{parts}
+  \item Write all four subroutines.
+  \item Run \code{make test}.
+  \item Change your stride from \code{LED_SIZE} to 6, rebuild, and note which tests fail and which
+    still pass. Then put it back.
+  \item Move the count test in \code{led_array_init} from the top of the loop to the bottom,
+    rebuild, and note which single test catches it. Explain why no other test could.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Where to put things}{Design}
+\label{c4:ex:where}
+\begin{parts}
+  \item For each of \code{0x0005}, \code{0x0025}, \code{0x0068}, \code{0x0200}, \code{0x08FF} and
+    \code{0x0900}, say what is there and whether a driver structure may live at it.
+  \item A widely copied piece of AVR code allocates its structures at \code{RAMEND + 1}. Say what
+    that address is on an ATmega328P, what a store to it does, and what the driver appears to do as
+    a result.
+  \item The same code on a different AVR, one with external RAM fitted, works. Explain.
+  \item Give two ways to choose an address for a structure, and one advantage of each.
+  \item Your program has one LED structure, one button structure, and an array of six LEDs. How
+    many bytes of SRAM is that? What fraction of the total?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{How deep does it go}{Hand calculation}
+\label{c4:ex:depth}
+Use the rule in \secref{c4:sec:worst}.
+\begin{parts}
+  \item A program with no interrupts, whose deepest path is a main loop calling a driver which
+    calls \code{shift_bits}. How many bytes of stack?
+  \item Chapter~3's program: a main loop that calls nothing, and an interrupt whose handler saves
+    eight registers and \code{SREG} and calls \code{btn_pressed}, which itself calls
+    \code{shift_bits}. How many bytes?
+  \item Where does the stack pointer end up, and what is the lowest byte actually occupied? These
+    are not the same number.
+  \item A handler that is nothing but \code{reti} still costs stack. How much, and why?
+  \item You add the LED array from Exercise~\ref{c4:ex:array}, and the main loop now calls
+    \code{led_array_all_on}, which calls \code{led_on}, which calls \code{shift_bits}. Redo (b).
+  \item A structure is placed at \code{0x08F0}. Using your answer to (b), is it safe? Show the
+    comparison.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise[fillaccent]{How deep the stack really goes}{Cross-check}
+\label{c4:ex:crosscheck}
+\emph{Compute it by hand, measure it, reconcile.}
+\begin{parts}
+  \item \textbf{By hand.} Your answer to Exercise~\ref{c4:ex:depth}(b).
+  \item \textbf{The lowest byte.} Turn that depth into an address: \code{SP} points at the next free
+    byte, so the lowest byte the stack occupies is \code{RAMEND - depth + 1}. Do this before (c).
+  \item \textbf{By measurement.} Let the program run, press the button, and read the low-water mark:
+\begin{shell}
+make measure IMAGE=app \
+    CALLS="--run 4000 --drive B4=0 --run 300 --drive B4=1 --run 300"
+\end{shell}
+    \code{--run} lets the program run on its own, which is the only way to reach a handler: an
+    interrupt cannot be called, it has to arrive. The last line reports how far down the stack
+    pointer went.
+  \item \textbf{Reconcile.} The byte count should agree with (a). The stack pointer's own value will
+    be one below the lowest byte you computed in (b), and that is not a disagreement; say why.
+  \item \textbf{Now run it without pressing anything.}
+\begin{shell}
+make measure IMAGE=app CALLS="--run 4000"
+\end{shell}
+    The measured depth is much smaller. Say what number you get, why it is smaller, and then answer
+    the question this exercise is really about: \textbf{which of your three answers is now wrong,
+    and which would you ship?}
+  \item \textbf{The rule.} Write down, in one sentence, when a measurement of stack depth is worth
+    more than the arithmetic and when it is worth less. Then say what a measured depth
+    \emph{larger} than your computed one would mean, and which of the two you would go and check
+    first.
+  \item \textbf{The margin.} Take your worst-case depth and your structures from
+    Exercise~\ref{c4:ex:where}(e). How many bytes are free? If a later change added one more level
+    of nesting inside the handler, how much would that cost, and would you notice?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{When it goes wrong}{Design}
+\label{c4:ex:wrong}
+\begin{parts}
+  \item A wrong stride and an off-by-one loop bound are the two characteristic array bugs. For
+    each, describe what memory looks like afterwards.
+  \item Neither produces an error. Say what you would actually observe in a program with six LEDs
+    and a wrong stride.
+  \item The test suite catches both. Say what a test has to do that a program does not, in order to
+    notice.
+  \item A structure that ends at \code{0x08F0} and a stack that reaches 15 bytes down. Nothing fails for a
+    week, and then it does. Give a plausible account of what changed.
+  \item Name one thing you could add to the \emph{program} that would make a stack overflow
+    noticeable rather than silent, and say what it would cost.
+\end{parts}

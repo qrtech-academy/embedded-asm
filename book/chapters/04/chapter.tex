@@ -1,0 +1,50 @@
+% Chapter 4, typeset from lectures/L04: the README is the opener and the closing summary, and
+% each appendix is a section, in the same order and with the same subsections.
+
+\chapter{Pointers, Arrays and Structs in SRAM}
+\label{c4:ch:pointers}
+
+{\large\itshape Data structures with no compiler to lay them out for you.\par}
+
+\begin{chapterbox}{In this chapter}
+\begin{itemize}
+  \item \code{X}, \code{Y} and \code{Z}: three 16-bit pointers made out of six 8-bit registers.
+  \item \code{ld}, \code{st}, and the post-increment and pre-decrement forms that make a walk one
+    instruction.
+  \item \code{ldd} and \code{std}: displacement addressing, and why \code{X} does not have it.
+  \item \code{lpm}, and the address space no ordinary load can reach.
+  \item Laying a structure out by hand: offsets, size, and what ``passing by reference'' costs.
+  \item Arrays of structures, and the stride that is not one byte.
+  \item Where in SRAM your structures should actually live, and why \code{RAMEND + 1} is not it.
+  \item The stack, now that an interrupt can land on top of two nested calls.
+\end{itemize}
+\end{chapterbox}
+
+The chapter starts with six registers and three pointers. Work out, before you are told, what
+distinguishes \code{ld r16, Z} from \code{ld r16, Z+} in the value it returns. The answer is
+nothing, and that is the point. Then a structure is seven bytes: not a type, not a record, but
+seven bytes at an address, and the only thing that makes them a structure is that you and your code
+agree on the offsets. Then an array is a stride: walking one means adding the \emph{structure's}
+size to a pointer, which is not one and is not a power of two, and that turns out to matter.
+
+Then where to put it: SRAM is 2048 bytes shared between your variables and the stack, and nothing
+on the device notices when they meet. And finally how deep the stack goes, a number you can
+compute in advance, and this chapter's cross-check is computing it and then measuring it.
+
+Finish Chapter~3 first. This chapter's array is an array of the LED structures Chapter~2 defined,
+and the stack arithmetic counts Chapter~3's handler.
+
+Two predictions are worth making before anything runs:
+\begin{itemize}
+  \item how many bytes of stack Chapter~3's program uses at its worst moment.
+  \item what happens if you store a structure at \code{RAMEND + 1}.
+\end{itemize}
+The first is the cross-check. The second is a trap that a great deal of published AVR code falls
+into.
+
+\input{chapters/04/pointers}
+\input{chapters/04/structures}
+\input{chapters/04/stack}
+\input{chapters/04/build}
+\input{chapters/04/summary}
+\input{chapters/04/exercises}

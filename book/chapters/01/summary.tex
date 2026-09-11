@@ -1,0 +1,73 @@
+% Section 1.5, from lectures/L01/README.md: what you should be able to do, questions to test
+% yourself, the next lecture, and the references.
+
+\section{Review}
+\label{c1:sec:review}
+
+\needspace{6\baselineskip}
+\subsection*{What you should be able to do now}
+\begin{itemize}
+  \item Say what the 32 registers are, which sixteen an immediate instruction can name, and why
+    the other sixteen cannot be named that way.
+  \item Read a line of \code{SREG}'s contents and say which branch would be taken next.
+  \item Given an address, say which of the three address spaces it belongs to and which
+    instruction reaches it; and say why \code{in}, \code{lds} and \code{lpm} are three different
+    instructions rather than one.
+  \item Encode an \code{ldi} by hand and confirm it against a disassembly.
+  \item Assemble a \code{.asm} file, disassemble the result, and run it in the simulator.
+  \item Count the cycles of a straight-line routine and of a loop, from the instruction set
+    summary, and say why a measured figure at a call site comes out higher than your count of the
+    body.
+  \item Write a subroutine that takes an argument in \code{r24}, returns a value in \code{r24},
+    and returns.
+  \item Write a program that runs on its own: a reset vector, a stack pointer, an LED lit through
+    \code{DDRB} and \code{PORTB}, and a loop to stop in.
+\end{itemize}
+
+\needspace{6\baselineskip}
+\subsection*{Questions to test yourself}
+\begin{enumerate}
+  \item Why can \code{ldi} name \code{r16} but not \code{r15}, and what does that cost you when you
+    run out of registers in the upper half?
+  \item Data space address \code{0x0025} and I/O address \code{0x05} are the same register. Which
+    instructions take which of the two numbers, and what happens if you give one the other's?
+  \item The register file is addressable as data at \code{0x0000} to \code{0x001F}. What could you
+    do with that, and why does essentially no program do it?
+  \item A conditional branch costs one cycle when it falls through and two when it branches. A
+    loop running $n$ times executes its exit branch $n + 1$ times. How many of those are taken?
+  \item Your hand count of a subroutine says 40 cycles and the simulator agrees, yet the
+    \emph{call} costs 44 and the loop around it costs 46 per iteration. Where are the other four,
+    and the two after that, without looking anything up?
+  \item Why does \code{shift_bits(7)} cost more than five times what \code{shift_bits(0)} costs,
+    and what does that imply about a driver that calls it with a pin number?
+  \item Your program writes \code{DDRB} at I/O address \code{0x04}, and the test that checks it
+    reads data space address \code{0x24}. Both are right. Which instructions take which of the two
+    numbers?
+  \item You light an LED with \code{sbi PORTB, 5} and it works. Why can a driver that has to light
+    \emph{any} LED not be written that way at all?
+\end{enumerate}
+
+\needspace{6\baselineskip}
+\subsection*{Looking ahead}
+Chapter~2 takes the same LED and lights it with something that can be told which LED to light:
+\begin{itemize}
+  \item \code{DDRx}, \code{PORTx} and \code{PINx}: three registers per port, and what each of the
+    three actually does, which is more than the two \code{sbi} instructions at the end of this
+    chapter needed to know.
+  \item Why writing a one to \code{PINx} toggles an output, which is not what the name suggests at
+    all.
+  \item The calling contract: which registers a subroutine may destroy, and which it must give
+    back.
+  \item The LED driver: the same LED, lit by something that can be told which LED to light.
+\end{itemize}
+
+\needspace{6\baselineskip}
+\subsection*{Sources}
+Every number this chapter quotes comes from one of two primary documents, and the text says
+which:
+\begin{itemize}
+  \item \emph{ATmega328P Datasheet}, Microchip Technology.\\
+    \url{https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7810-Automotive-Microcontrollers-ATmega328P_Datasheet.pdf}
+  \item \emph{AVR Instruction Set Manual}, Microchip Technology.\\
+    \url{https://ww1.microchip.com/downloads/en/devicedoc/atmel-0856-avr-instruction-set-manual.pdf}
+\end{itemize}

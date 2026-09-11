@@ -1,0 +1,171 @@
+% Section 5.1, from lectures/L05/appendix/a_timers.md.
+
+\section{Timers}
+\label{c5:sec:timers}
+
+\subsection{What is wrong with counting}
+\label{c5:sec:counting}
+Chapter~2 ended with an LED blinking about 127,000 times a second, because nothing was slowing it
+down (Exercise~\ref{c2:ex:blink}). The obvious fix is a loop that counts to a large number and does
+nothing, and it works.
+
+It is still the wrong answer, for three reasons that are worth separating.
+
+\textbf{The processor is doing nothing, and it is doing it at full speed.} Sixteen million cycles a
+second spent decrementing a register. Anything else the program wants to do has to be interleaved
+into that loop by hand, and every such thing changes the delay.
+
+\textbf{The delay is only right if you counted correctly.} A counting loop's duration is an
+arithmetic claim about instructions, and every edit to the loop invalidates it
+(\secref{c1:sec:cycles}).
+
+\textbf{And an interrupt makes it wrong anyway.} A handler that fires during the loop adds its own
+cycles to the delay, at a moment nothing predicts (\secref{c3:sec:blocked}). The more your program
+does, the less accurate its delays become, which is precisely backwards.
+
+A timer has none of those problems, because the counting is not done by the processor.
+
+\subsection{The hardware}
+\label{c5:sec:hardware}
+
+\bookfigure{timer_block}{Timer1 as a block diagram: the 16\,MHz clock into a prescaler that
+divides by 1, 8, 64, 256 or 1024, into the 16-bit counter \code{TCNT1}, compared against
+\code{OCR1A}; on a match the counter is cleared, a flag is raised and the handler runs if
+\code{OCIE1A} is set.}{c5:fig:block}
+
+Four pieces, and only two of them are yours to choose.
+
+\textbf{The prescaler} divides the system clock, so the counter advances once every $N$ cycles
+rather than every cycle. Five ratios are available: \textbf{1, 8, 64, 256 and 1024}. That is
+Timer0's and Timer1's set; Timer2 has a different and longer one, and every calculation in this
+chapter assumes the five (\secref{c5:sec:prescaler}).
+
+\textbf{The counter}, \code{TCNT1}, counts up. Timer1's is 16 bits wide, which is what makes it the
+useful one; Timer0 and Timer2 have 8-bit counters.
+
+\textbf{The compare register}, \code{OCR1A}, holds a value you choose. Hardware compares the
+counter against it continuously.
+
+\textbf{On a match}, in CTC mode, the hardware clears the counter and raises a flag. If
+\code{OCIE1A} is set in \code{TIMSK1} and interrupts are enabled globally, that flag becomes an
+interrupt.
+
+Everything above the handler happens whether or not any of your code is running. That is the whole
+argument: the counting continues while the processor is doing something else, including while it
+is inside a different interrupt handler.
+
+\subsection{Why the prescaler exists}
+\label{c5:sec:prescaler}
+A 16-bit counter at 16\,MHz overflows in about four milliseconds. Anything slower than 244\,Hz is
+out of reach without help, and the help is the prescaler.
+
+The ratios are \textbf{1, 8, 64, 256 and 1024}, and the step between them is not constant. Write
+the four steps out and the shape is obvious:
+
+\begin{console}
+    1 -> 8      x8
+    8 -> 64     x8
+   64 -> 256    x4
+  256 -> 1024   x4
+\end{console}
+
+Two eights and then two fours. That matters more than it sounds. When a frequency does not fit at
+one prescaler, the next one up multiplies your available period by eight at the bottom of the
+ladder and by four at the top, so ``try the next one'' is not a smooth adjustment and the number of
+ticks you end up with jumps around.
+
+\textbf{These five are Timer0's and Timer1's.} Timer2 selects from \textbf{1, 8, 32, 64, 128, 256
+and 1024}, because it is the timer meant to be driven from a watch crystal and needs the extra steps
+to reach a second from 32.768\,kHz. Nothing in this book uses Timer2, and mixing its ladder into
+any calculation below would give a wrong answer that still looks plausible, which is why
+\file{atmega328p.hpp} pins the five and no others.
+
+\textbf{A prescaler is a loss of resolution, not just a change of range.} At a prescaler of 64 the
+counter advances once every 64 cycles, so the finest period you can express is 64 cycles. Every
+frequency you can reach is a multiple of that, and everything between two of them is unavailable.
+That is the whole of \secref{c5:sec:frequency}.
+
+\subsection{CTC mode}
+\label{c5:sec:ctc}
+
+\bookfigure{ctc_waveform}{A sawtooth: \code{TCNT1} counts up to the \code{OCR1A} line and drops
+straight to zero, three times, with a compare-match pulse under each drop and the period marked as
+$N \times (\text{\code{OCR1A}} + 1)$ cycles.}{c5:fig:ctc}
+
+CTC is \textbf{Clear Timer on Compare}: the counter counts up to \code{OCR1A} and the hardware
+clears it. So the period is:
+\[
+  T = \frac{N \times (\mathrm{OCR1A} + 1)}{f_{\mathrm{clk}}}
+\]
+
+\textbf{\code{OCR1A + 1}, not \code{OCR1A}.} The counter starts at zero, so counting to 249 visits
+250 values. Writing the tick count itself instead of one less gives a period one tick too long,
+every period, which is 0.4\% at 250 ticks and invisible at 16000. It is the single most common
+mistake in timer setup and it produces a clock that is slightly slow rather than obviously broken.
+
+\textbf{The period does not drift.} The hardware restarts the count at the match, not when your
+handler gets round to running, so a handler that starts late makes that one event late and nothing
+more. A software delay has no such anchor: every cycle it runs long, and every interrupt that lands
+in it, is added to every period after it. A CTC period that is exactly
+$N \times (\mathrm{OCR1A} + 1)$ stays exactly that for as long as the power is on, which is also
+why the previous paragraph matters: an \code{OCR1A} that is one out is one tick out in every
+period, and that does accumulate.
+
+The alternative, \textbf{normal mode}, lets the counter run to its maximum and wrap, interrupting
+on overflow. The period is then fixed by the counter's width and the prescaler, and the only thing
+you can choose is the prescaler. It is simpler and much less useful, and it is what you fall back
+to on a timer with no compare register.
+
+\subsection{The registers}
+\label{c5:sec:registers}
+
+\bookfigure{timer_registers}{\code{TCCR1A}, \code{TCCR1B} and \code{TIMSK1} as their bits:
+\code{WGM12} is the CTC mode bit, \code{CS12} to \code{CS10} are the prescaler and the on switch,
+and \code{OCIE1A} is the interrupt enable.}{c5:fig:registers}
+
+Four registers, and three cautions.
+
+\begin{booktable}{@{}p{5em}p{4.2em}L@{}}
+  \thead{Register} & \thead{Address} & \thead{What you put in it} \\
+  \midrule
+  \code{TCCR1A} & \code{0x80} & Zero, for CTC with no pin output. \\
+  \code{TCCR1B} & \code{0x81} & \code{WGM12} for CTC, and the three clock select bits. \\
+  \code{OCR1A} & \code{0x88} & The compare value, two bytes, low byte first. \\
+  \code{TIMSK1} & \code{0x6F} & \code{OCIE1A}, to let the match interrupt. \\
+\end{booktable}
+
+\textbf{All four are at \code{0x60} or above}, which is extended I/O, so \code{in} and \code{out}
+cannot reach any of them and \code{lds} and \code{sts} are the only way in
+(\secref{c1:sec:iowindow}). Unlike the port registers, getting this wrong is an assembler error
+rather than a silent one.
+
+\textbf{The clock select bits are the on switch.} \code{CS12:CS10} choose the prescaler \emph{and}
+whether the timer runs at all: all three zero means stopped. They live in the same byte as
+\code{WGM12}, so a careless write to \code{TCCR1B} that means to change the mode also stops the
+counter, and a timer that has stopped looks exactly like a timer whose interrupt was never enabled.
+
+\textbf{Write \code{OCR1A} high byte first.} The 16-bit registers are reached through a shared
+temporary byte in the hardware, and the datasheet's rule is: write the high byte first, read the
+low byte first. Getting it backwards is not a race and is not occasional: the low-byte write is the
+one that commits, so it latches whatever stale value \code{TEMP} was already holding into
+\code{OCR1AH}, and the high-byte write that follows goes into \code{TEMP} and never reaches the
+register at all. It is wrong every time, deterministically, for any value whose high byte is not
+already correct. This book's arithmetic does not depend on it and the simulator will not punish
+you; a real device will.
+
+\subsection{What a timer does not solve}
+\label{c5:sec:notsolve}
+\textbf{It does not make your handler punctual.} The compare match is exact; the moment your code
+runs is not, because the interrupt still waits for the current instruction and the response still
+takes its four cycles (\secref{c3:sec:sequence}). The period is exact and each individual arrival
+is not, which is the cross-check in Exercise~\ref{c5:ex:crosscheck}.
+
+\textbf{It does not give you more timers.} There are three, one of them 16-bit, and the Arduino
+environment has already claimed Timer0 for its own timekeeping if you are sharing a board with it.
+Wanting four independent rates from three timers is normal, and the answer is
+\secref{c5:sec:driver}.
+
+\textbf{And it does not stop while you debug.} A timer keeps counting when the processor is halted
+at a breakpoint, so a program stepped through by hand sees a flood of pending interrupts the moment
+it resumes. Nothing in this book does that, and it is the first thing that will confuse you on real
+hardware with a debugger attached.

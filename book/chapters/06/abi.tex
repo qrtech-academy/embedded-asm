@@ -1,0 +1,347 @@
+% Section 6.3, from lectures/L06/appendix/c_c_abi.md.
+
+\section{The C ABI}
+\label{c6:sec:abi}
+
+\subsection{The other party}
+\label{c6:sec:party}
+Since Chapter~1 you have been following a calling convention (\secref{c2:sec:contract}): arguments
+in \code{r24} and \code{r22}, results in \code{r24}, \code{r18} to \code{r27} and \code{r30},
+\code{r31} free to destroy, \code{r2} to \code{r17} and \code{r28}, \code{r29} to be given back.
+
+Up to now that convention has had one party. Every caller of your subroutines was code you wrote,
+so following the rules was a discipline rather than a requirement, and breaking them would only
+ever have surprised you.
+
+This section is the other party arriving. The C compiler follows the same convention, so a
+function it generates can call a subroutine you wrote, and vice versa, with no glue and no
+declaration beyond a prototype. \textbf{Everything you have been doing since Chapter~1 was for
+this.}
+
+\subsection{The convention, exactly}
+\label{c6:sec:convention}
+Figure~\ref{c2:fig:contract}, back in Chapter~2, has the registers coloured by role; this is the
+rest of what it implies.
+
+\textbf{Arguments go in \code{r25} downwards, in pairs, left to right.} The first argument takes
+\code{r25:r24}, the second \code{r23:r22}, the third \code{r21:r20}, and so on down to \code{r8}.
+An 8-bit argument takes only the lower register of its pair, so the first is \code{r24}, the second
+\code{r22}, the third \code{r20}, and the odd-numbered ones are simply not used.
+
+That is worth stating plainly because it is the rule people guess wrong: a byte argument does
+\textbf{not} move up to fill the gap. Three byte arguments arrive in \code{r24}, \code{r22} and
+\code{r20}.
+
+\textbf{Results come back the same way.} A byte in \code{r24}, a 16-bit value in \code{r25:r24}, a
+32-bit value in \code{r25:r22}.
+
+\textbf{Anything larger than fits in the registers goes on the stack}, and so does any argument
+past the last pair. Allocation runs from \code{r25} down to \code{r8}, which is eighteen registers
+and therefore \textbf{nine pairs}: \code{r25:r24}, \code{r23:r22}, \code{r21:r20}, \code{r19:r18},
+\code{r17:r16}, \code{r15:r14}, \code{r13:r12}, \code{r11:r10}, \code{r9:r8}. A byte argument takes
+a pair and wastes the odd half rather than closing the gap, so six \code{uint8_t} arguments land in
+\code{r24}, \code{r22}, \code{r20}, \code{r18}, \code{r16} and \code{r14}. This book never comes
+close; a kernel's \code{task_init} does.
+
+\textbf{\code{r1} is assumed to hold zero.} The compiler relies on it constantly and never checks.
+A subroutine that uses \code{r1} as scratch and does not clear it before returning breaks C code
+that had nothing to do with it, at a distance, in a way that looks like a compiler bug. If you use
+\code{mul}, whose result lands in \code{r1:r0}, clear \code{r1} afterwards (\secref{c4:sec:stride}).
+
+\textbf{\code{r0} is scratch for everybody} and nobody expects it preserved.
+
+\subsection{Calling your assembly from C}
+\label{c6:sec:asmfromc}
+Two things are needed, and neither is a wrapper.
+
+On the assembly side, the subroutine has to be visible to a linker. Everywhere else in this book
+that is free, because \code{avra} makes every label global (\secref{c1:sec:avra}). \textbf{Here it
+is not}, and that is the first of two reasons this chapter is the one place the book uses a second
+assembler.
+
+On the C side, a prototype whose types match what the subroutine actually expects:
+
+\begin{ccode}
+extern uint8_t shift_bits(uint8_t shifts);
+\end{ccode}
+
+That is all. The compiler puts the argument in \code{r24} because the prototype says it is a byte,
+and reads the result from \code{r24} for the same reason, and your subroutine has been doing
+exactly that since Chapter~1.
+
+\textbf{The prototype is a promise nothing checks.} Declare the argument as \code{uint16_t} and the
+compiler will pass it in \code{r25:r24} and your subroutine will read \code{r24} and ignore
+\code{r25}. That gives the same answers as before, because C would have cut the argument to its low
+byte anyway, and it is the dangerous kind of wrong: nothing changes, so nothing tells you. Declare
+the result as \code{uint16_t} too and it stops being harmless. The caller reads \code{r25:r24},
+\code{r25} still holds the argument's high byte because your subroutine never touched it, and
+\code{shift_bits(300)} comes back as 256. There is no header, no name mangling and no link-time
+type check; the linker matches a name to a name.
+
+\subsubsection{The one place this book uses two assemblers}
+\code{avr-gcc} drives GNU \code{as}, and GNU \code{as} does not read AVRASM2. It cannot assemble
+\file{drivers/source/utils.asm}, and no flag makes it: the two are different languages describing
+the same machine. \code{avra}, for its part, has no linker and cannot combine anything with a
+compiled object file.
+
+So for this section, and for nothing else in the book, you translate your own \code{shift_bits}
+into GNU \code{as} and save it as \file{drivers/source/utils_gnu.S}. The instructions do not
+change; only the directives around them do:
+
+\begin{booktable}{@{}p{0.47\linewidth}L@{}}
+  \thead{Your \file{utils.asm}} & \thead{\file{utils_gnu.S}} \\
+  \midrule
+  \code{.include "m328Pdef.inc"} & \texttt{\#include <avr/io.h>} \\
+  \emph{(nothing; \code{avra} exports every label)} & \code{.global shift_bits} \\
+  \code{.equ NAME = value} & \code{.equ NAME, value} \\
+  \code{out PORTB, r16} & \code{out _SFR_IO_ADDR(PORTB), r16} \\
+  \code{sts PORTB + 0x20, r16} & \code{sts PORTB, r16} \\
+  \code{.org 0x0006} (words) & \code{.org 0x000C} (bytes) \\
+\end{booktable}
+
+\code{shift_bits} touches no port, defines no constant and sits in no vector slot, so in practice
+the translation is: change the include, add one \code{.global} line, and copy the body across
+unchanged. \textbf{The file must be \file{.S} and not \file{.s}}, because the capital is what runs
+the preprocessor that makes \texttt{\#include} work.
+
+\subsubsection{The same program, twice}
+Here is a program that exercises every row of that table at once. It is not one of the book's
+exercises; it exists to be read side by side. In AVRASM2, which is what you have been writing:
+
+\begin{asm}
+.include "m328Pdef.inc"
+
+.equ LED_BIT = 5
+
+.cseg
+.org 0x0000
+    rjmp reset
+.org PCI0addr                   ; 0x0006, a WORD address
+    rjmp on_pin_change
+
+.org 0x0034                     ; past the table: 26 vectors, 2 words each
+reset:                          ; global already; avra exports every label
+    ldi r16, (1 << LED_BIT)
+    out DDRB, r16               ; DDRB is 0x04, an I/O address
+    sts TCCR1B, r16             ; 0x81, already a data space address
+loop:
+    rjmp loop
+
+on_pin_change:
+    in  r16, PINB               ; PINB is 0x03, an I/O address
+    reti
+\end{asm}
+
+And the same program for \code{avr-gcc}, which is the dialect nearly all published AVR assembly is
+written in:
+
+\begin{gnuasm}
+#include <avr/io.h>
+
+.equ LED_BIT, 5                 /* comma, not = */
+
+.section .text
+.org 0x0000
+    rjmp reset
+.org 0x000C                     /* 0x0006 doubled: bytes, not words */
+    rjmp on_pin_change
+
+.org 0x0068                     /* 0x0034 doubled, for the same reason */
+.global reset                   /* or nothing outside can call it */
+reset:
+    ldi r16, (1 << LED_BIT)
+    out _SFR_IO_ADDR(DDRB), r16 /* 0x24 here; the macro subtracts 0x20 */
+    sts TCCR1B, r16             /* unchanged: 0x81 in both dialects */
+loop:
+    rjmp loop
+
+.global on_pin_change
+on_pin_change:
+    in  r16, _SFR_IO_ADDR(PINB)
+    reti
+\end{gnuasm}
+
+\textbf{Every instruction is identical, and so is every byte.} Assemble both and disassemble the
+results:
+
+\begin{console}
+   0:   33 c0           rjmp    .+102           ; to 0x68
+   c:   32 c0           rjmp    .+100           ; to 0x72
+        ...                                     ; the rest of the vector table
+  68:   00 e2           ldi     r16, 0x20
+  6a:   04 b9           out     0x04, r16
+  6c:   00 93 81 00     sts     0x0081, r16
+  70:   ff cf           rjmp    .-2
+  72:   03 b1           in      r16, 0x03
+  74:   18 95           reti
+\end{console}
+
+\textbf{The \code{.org 0x0034} is not padding.} Without it \code{reset:} starts at word \code{0x07},
+which is the second word of PCINT0's slot, and the body runs straight through the slots for
+PCINT1, PCINT2 and the watchdog. The program still works right up to the moment one of those
+interrupts is enabled, and then the vector jumps into the middle of your setup code. Twenty-six
+vectors of two words each end at word \code{0x33}, so \code{0x34} is the first word that is yours
+(\secref{c3:sec:table}).
+
+That listing came out of both files. Nothing in the two columns of the table is a difference of
+\emph{machine}; every one of them is a difference of \emph{notation}, and the assembler resolves all
+of it before a single byte is emitted. \code{out DDRB, r16} and \code{out _SFR_IO_ADDR(DDRB), r16}
+are two ways of writing \code{b9 04}, and the chip has never heard of either.
+
+Three of those rows are worth dwelling on:
+\begin{itemize}
+  \item \textbf{\code{.org PCI0addr} against \code{.org 0x000C}.} The same vector slot. AVRASM2
+    counts words as the datasheet does, GNU \code{as} counts bytes, and the factor of two between
+    them is the single most productive source of wrong-looking interrupt behaviour when code moves
+    between the dialects (\secref{c3:sec:table}).
+  \item \textbf{\code{DDRB} against \code{_SFR_IO_ADDR(DDRB)}.} Also the same register.
+    \file{m328Pdef.inc} calls it \code{0x04} and \file{<avr/io.h>} calls it \code{0x24}, and the
+    macro subtracts the \code{0x20} back off so that \code{out} can reach it
+    (\secref{c1:sec:iowindow}).
+  \item \textbf{\code{sts TCCR1B, r16}, which did not change at all.} \code{TCCR1B} lives above the
+    I/O window, so both dialects give it the same data space address and neither can reach it with
+    \code{out}. The registers that need translating are exactly the ones \code{out} can touch.
+\end{itemize}
+
+Doing this once by hand is the point. That is the whole of the difference between the dialect this
+book writes and the dialect most published AVR assembly is written in, and you now have a reason to
+read it properly (\secref{c1:sec:studio}).
+
+\subsubsection{Building the two together}
+Hand both files to \code{avr-gcc}, which recognises \file{.S} and \file{.c} and does the right thing
+with each:
+
+\begin{shell}
+avr-gcc -mmcu=atmega328p -Os \
+        drivers/app/main.c drivers/source/utils_gnu.S \
+        -o drivers/build/mixed.elf
+\end{shell}
+
+Note that this is a \emph{different} build from the rest of the book, which assembled one unit
+with \code{avra} and never involved a linker at all (\secref{c1:sec:avra}). A C program needs the
+startup code: it is what sets up the stack pointer, clears \code{.bss}, sets \code{r1} to zero, and
+calls \code{main}. All the things your \file{main.asm} had to do by hand.
+
+\subsection{Calling C from your assembly}
+\label{c6:sec:cfromasm}
+The same convention read backwards. Put the arguments in \code{r25:r24} and \code{r23:r22},
+\code{rcall} the function's name, and take the result from \code{r24}.
+
+What changes is whose problem the registers are. \textbf{A C function will destroy \code{r18} to
+\code{r27} and \code{r30}, \code{r31}}, because the convention says it may, and the compiler takes
+full advantage. Assembly that calls C and expects \code{Z} to survive is relying on nothing.
+
+And \textbf{the C function assumes \code{r1} is zero on entry}, so if your assembly has been using
+it, put it back before the call and not merely before the return.
+
+\subsection{Reading what the compiler produces}
+\label{c6:sec:reading}
+\code{avr-gcc -S} writes assembly instead of an object file, and it is worth doing at least once
+with your own code beside it.
+
+\begin{shell}
+avr-gcc -mmcu=atmega328p -Os -S drivers/app/main.c -o -
+\end{shell}
+
+Two things are usually surprising the first time.
+
+\textbf{The compiler is better at some things than you expect.} A function whose last act is to
+call another becomes a \code{jmp} rather than a \code{call} and a \code{ret}. On this part the
+compiler writes \code{call} and \code{jmp}, because 32\,KB of flash is further than \code{rcall}
+and \code{rjmp} reach: the \code{call} and \code{ret} it removes cost eight cycles between them and
+the \code{jmp} that replaces them costs three, so the saving is five cycles and two bytes of stack.
+That is the tail call from Chapter~3's driver specification (\secref{c3:sec:irq}), applied
+automatically and everywhere.
+
+\textbf{And worse at others.} It does not know that a value fits in a byte when the C types say
+\code{int}, it will not use a register you know is free, and it cannot make the arithmetic
+decisions you made in Chapter~5. This chapter's cross-check (Exercise~\ref{c6:ex:crosscheck})
+compares the compiler's \code{shift_bits} against yours, and the result is not the flattering one
+you might expect in either direction.
+
+\textbf{Read \code{-Os} output, not \code{-O0}.} Unoptimised AVR code spills everything to the
+stack and is not representative of anything anybody ships.
+
+\subsection{What the ABI does not give you}
+\label{c6:sec:abinot}
+\textbf{It does not check anything.} The prototype is a promise, the linker matches names, and a
+mismatch is a program that runs and is wrong.
+
+\textbf{It does not make your assembly portable.} The convention is \code{avr-gcc}'s. Another
+compiler for the same chip may differ, and the same compiler for a different AVR family does differ
+in the details of where large values go.
+
+\textbf{And it does not make mixed code easy to reason about.} Every call is a boundary where one
+side knows what it destroyed and the other knows what it needed, and neither can see the other.
+That is the price of the arrangement, and the reason the convention is worth following from the
+first subroutine you write rather than from the first one that C calls.
+
+\subsection{Reading a C variable from assembly}
+\label{c6:sec:variable}
+Everything so far has been about \emph{calls}: C hands your subroutine registers, your subroutine
+hands them back. There is a second half to the boundary and this book has not needed it once,
+because every driver here is handed the address of everything it touches. \code{led_on} gets a
+pointer in \code{r25:r24}; it never looks anything up by name.
+
+Code that shares \emph{state} with C rather than being called by it does look things up by name,
+and it is worth doing on paper before you need it.
+
+\needspace{6\baselineskip}
+Given, in some C file:
+
+\begin{ccode}
+volatile uint8_t  ticks;
+volatile uint16_t deadline;
+\end{ccode}
+
+the assembly is:
+
+\begin{gnuasm}
+    lds  r24, ticks             ; one byte, one instruction
+    inc  r24
+    sts  ticks, r24
+
+    lds  r24, deadline          ; two bytes, low first, two instructions
+    lds  r25, deadline + 1
+\end{gnuasm}
+
+Three things in that are worth stating outright.
+
+\textbf{A C global is a data space address, and the linker supplies it.} \code{ticks} is a name
+for a byte in SRAM, somewhere above \code{0x0100}, chosen when the program was linked. That is why
+it is \code{lds} and \code{sts} and never \code{in} and \code{out}: \code{in} and \code{out} reach
+the first 64 I/O registers and nothing else, and no C variable ever lives there
+(\secref{c1:sec:iowindow}). The mistake reads well and assembles cleanly, and the linker only
+warns: it cuts the address down to the six bits \code{in} has room for and builds the program
+anyway, so \code{in r24, ticks} reads whichever I/O register that lands on and never your variable.
+
+\textbf{A 16-bit variable is two loads and the low byte is first.} Which means the same tearing
+Chapter~3 warned about (\secref{c3:sec:shared}), on the same terms: two instructions with a gap,
+and an interrupt that writes \code{deadline} can land in it.
+
+\textbf{A pointer costs one more load than you think.} If C declares \code{struct thing* current},
+then \code{current} is a \emph{pointer variable}: two bytes in SRAM holding the address of the
+structure. Reading the structure's first field is two loads and then a third:
+
+\begin{gnuasm}
+    lds  r30, current           ; Z = the pointer's value, not its address
+    lds  r31, current + 1
+    ld   r24, Z                 ; and now the field
+\end{gnuasm}
+
+Loading \code{Z} with the address \emph{of} \code{current} and dereferencing that gives you the
+pointer's own bytes, interpreted as data, which is a plausible-looking small number rather than an
+error. It is the single most common way this boundary is got wrong, and the reason is that C hides
+the difference: \code{current->field} is one arrow and two dereferences.
+
+\textbf{There is no AVRASM2 half of this section}, and that is the point rather than an omission.
+\code{avra} has no linker (\secref{c1:sec:avra}), so there is nothing to supply an address that
+some other file chose; a name in a \file{.asm} file has to have been defined in the unit being
+assembled. Sharing a variable with C is a thing you can only do in a build that links, which is
+this chapter's build and no earlier one.
+
+\textbf{Where this goes next.} A kernel is exactly the code that shares state with C rather than
+being called by it. Its context switch is assembly, its scheduler is C, and the two meet across a
+single \code{struct tcb*} that the C half assigns and the assembly half reads, dereferences and
+writes back: the three instructions above, in that order, plus the stack pointer of
+\secref{c4:sec:loadsp}.

@@ -1,0 +1,315 @@
+% asmbook.sty - the design of "Embedded Assembly for the ATmega328P" as a book.
+%
+% Every visual decision lives here, the way every figure decision lives in diagrams/style.py,
+% so the chapters describe content and nothing else. The colours are the figures' own inks, so
+% the page and the drawings on it read as one thing.
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{asmbook}[2026/09/10 Embedded Assembly book design]
+
+% ------------------------------------------------------------------------------------------
+% Page. 7.5 x 9.25 in, a common trim for computer architecture texts; the text block is wide
+% enough for an 80-column line of code at the listing size.
+% ------------------------------------------------------------------------------------------
+\RequirePackage[
+  paperwidth=7.5in, paperheight=9.25in,
+  inner=0.85in, outer=1.15in, top=0.95in, bottom=1.0in,
+  headheight=14pt, headsep=18pt, footskip=30pt]{geometry}
+
+% ------------------------------------------------------------------------------------------
+% Type. Palatino for the text, and DejaVu Sans Mono for code because it is the face the
+% figures are drawn in: a register name reads the same in a sentence as in a drawing.
+% ------------------------------------------------------------------------------------------
+\RequirePackage{amsmath}
+\RequirePackage{fontspec}
+\RequirePackage{unicode-math}
+\setmainfont{TeX Gyre Pagella}
+\setsansfont{TeX Gyre Heros}[Scale=MatchLowercase]
+\setmonofont{DejaVu Sans Mono}[Scale=0.84, HyphenChar=None]
+\setmathfont{TeX Gyre Pagella Math}
+\RequirePackage[protrusion=true, expansion=true, tracking=true]{microtype}
+\SetTracking{encoding=*, shape=sc}{40}
+
+% ------------------------------------------------------------------------------------------
+% Colour. The figures' inks, from diagrams/style.py.
+% ------------------------------------------------------------------------------------------
+\RequirePackage[table]{xcolor}
+\definecolor{accent}{HTML}{C00000}
+\definecolor{accent2}{HTML}{0050B3}
+\definecolor{muted}{HTML}{767676}
+\definecolor{fillaccent}{HTML}{F4D7D7}
+\definecolor{fillaccent2}{HTML}{D6E4F5}
+\definecolor{fillmuted}{HTML}{E8E8E8}
+\definecolor{codebg}{HTML}{F6F5F2}
+\definecolor{rule}{HTML}{BBBBBB}
+
+% ------------------------------------------------------------------------------------------
+% Structure: chapter openers, section heads, running heads.
+% ------------------------------------------------------------------------------------------
+\RequirePackage{titlesec}
+\RequirePackage{titletoc}
+
+\titleformat{\chapter}[display]
+  {\normalfont\raggedright}
+  {\color{accent}\large\scshape\lsstyle\MakeLowercase{\chaptertitlename}\enspace\thechapter}
+  {1.2ex}
+  {\fontsize{26}{30}\selectfont\bfseries}
+  [\vspace{1.4ex}{\color{rule}\titlerule[0.6pt]}]
+\titleformat{name=\chapter, numberless}[display]
+  {\normalfont\raggedright}
+  {}
+  {0pt}
+  {\fontsize{26}{30}\selectfont\bfseries}
+  [\vspace{1.4ex}{\color{rule}\titlerule[0.6pt]}]
+\titlespacing*{\chapter}{0pt}{0.35in}{0.3in}
+
+\titleformat{\section}
+  {\normalfont\Large\bfseries\raggedright}
+  {\color{accent}\thesection}{0.7em}{}
+\titlespacing*{\section}{0pt}{3.2ex plus 1ex minus .2ex}{1.4ex plus .2ex}
+
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\raggedright}
+  {\color{accent}\thesubsection}{0.7em}{}
+\titlespacing*{\subsection}{0pt}{2.6ex plus 1ex minus .2ex}{1.0ex plus .2ex}
+
+\titleformat{\subsubsection}
+  {\normalfont\normalsize\bfseries\itshape\raggedright}
+  {}{0em}{}
+\titlespacing*{\subsubsection}{0pt}{2ex plus .8ex minus .2ex}{0.6ex plus .2ex}
+
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{1}
+
+% Contents: chapters bold with their number in the accent, sections indented beneath.
+\titlecontents{chapter}[0pt]
+  {\addvspace{1.4ex}\bfseries}
+  {\makebox[2em][l]{\color{accent}\thecontentslabel}}
+  {}
+  {\hfill\contentspage}
+\titlecontents{section}[2em]
+  {\addvspace{0.2ex}}
+  {\makebox[2.6em][l]{\thecontentslabel}}
+  {}
+  {\titlerule*[0.6pc]{.}\contentspage}
+
+\RequirePackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\enspace #1}}
+\fancyhead[LE]{\small\thepage\qquad\scshape\lsstyle\MakeLowercase{\leftmark}}
+\fancyhead[RO]{\small\scshape\lsstyle\MakeLowercase{\rightmark}\qquad\thepage}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\small\thepage}}
+\RequirePackage{emptypage}
+
+% ------------------------------------------------------------------------------------------
+% Text.
+% ------------------------------------------------------------------------------------------
+% Pages end where their text ends. The class default stretches every gap on a page to
+% square the bottom off, which a page with a figure pushed to the next one cannot survive.
+\raggedbottom
+% With a ragged bottom there is no reason to leave one line of a paragraph alone on a page.
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+\setlength{\parindent}{1.2em}
+% A little room to stretch a tight paragraph rather than let one line poke into the margin.
+\setlength{\emergencystretch}{1em}
+\linespread{1.06}
+\RequirePackage[shortlabels]{enumitem}
+\setlist{itemsep=0.25ex, topsep=0.8ex, parsep=0pt}
+\setlist[itemize]{leftmargin=1.4em, label={\color{accent}\textbullet}}
+\setlist[enumerate]{leftmargin=1.6em, label={\bfseries\arabic*.}}
+
+% Inline code. \detokenize is what lets a name like shift_bits or a value like ~(1 << n) be
+% written as it appears in the source, without escaping; \path is for file names, which are
+% long and need to break at a slash.
+% Robust, so it survives the trip through the contents and the running heads.
+\DeclareRobustCommand{\code}[1]{{\ttfamily\detokenize{#1}}}
+\RequirePackage{xurl}
+\urlstyle{tt}
+% xurl lets a URL break anywhere, which a 100-character datasheet link needs; a file name
+% breaks only at a slash or a dot, so no name is ever split in half.
+\DeclareUrlCommand{\file}{\urlstyle{tt}\def\UrlBreaks{\do\/\do\.}\def\UrlBigBreaks{}}
+
+% Section references in the terse form the lectures use: (A.6) becomes (§1.1.6).
+\newcommand{\secref}[1]{\S\ref{#1}}
+\newcommand{\Secref}[1]{\S\ref{#1}}
+
+% ------------------------------------------------------------------------------------------
+% Tables. Rules only where they separate; never a vertical one.
+% ------------------------------------------------------------------------------------------
+\RequirePackage{booktabs}
+\RequirePackage{tabularx}
+\RequirePackage{array}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}p}
+\setlength{\aboverulesep}{0.5ex}
+\setlength{\belowrulesep}{0.5ex}
+\newcommand{\thead}[1]{\textbf{#1}}
+% A table set in the flow of the text, full measure, one size down.
+\newenvironment{booktable}[1]
+  {\par\smallskip\noindent\small\tabularx{\linewidth}{#1}\toprule}
+  {\bottomrule\endtabularx\par\smallskip}
+% The same, at its natural width and centred, for tables of short cells.
+\newenvironment{narrowtable}[1]
+  {\par\smallskip\begin{center}\small\begin{tabular}{#1}\toprule}
+  {\bottomrule\end{tabular}\end{center}\par\smallskip}
+
+% ------------------------------------------------------------------------------------------
+% Figures. One scale for every figure, so a label is the same size in all of them, exactly as
+% diagrams/style.py intends; a figure too wide for that scale is fitted to the page instead
+% and allowed a little of each margin.
+% ------------------------------------------------------------------------------------------
+\RequirePackage{graphicx}
+\graphicspath{{build/figures/}}
+\RequirePackage[export]{adjustbox}
+\RequirePackage{float}
+\RequirePackage{caption}
+\captionsetup{font=small, labelfont={bf,color=accent}, labelsep=quad,
+  justification=centering, skip=6pt}
+\newcommand{\figscale}{0.64}
+\newlength{\figmax}
+\setlength{\figmax}{\dimexpr\textwidth+0.6in\relax}
+% The optional argument is the placement. The default pins the figure where it is written; a
+% figure too tall to fit below its introduction can be let float to the next page instead.
+\newcommand{\bookfigure}[4][H]{%
+  \begin{figure}[#1]
+    \centering
+    \makebox[\textwidth][c]{\adjustbox{scale=\figscale, max width=\figmax, max height=0.78\textheight}{%
+      \includegraphics{#2}}}
+    \caption{#3}\label{#4}
+  \end{figure}}
+
+% ------------------------------------------------------------------------------------------
+% Code. A tinted block with a coloured edge; the edge says which language it is. Red for
+% assembly, blue for the shell, grey for what a tool printed back.
+% ------------------------------------------------------------------------------------------
+\RequirePackage{listings}
+\RequirePackage[most]{tcolorbox}
+
+\lstdefinelanguage{avrasm}{
+  alsoletter={.},
+  sensitive=false,
+  morekeywords={adc,add,adiw,and,andi,asr,bld,brcc,brcs,breq,brlo,brne,brsh,bst,call,cbi,
+    cli,com,cp,cpc,cpi,cpse,dec,eor,in,inc,jmp,ld,ldd,ldi,lds,lpm,lsl,lsr,mov,movw,mul,neg,
+    nop,or,ori,out,pop,push,rcall,ret,reti,rjmp,rol,ror,sbi,sbiw,sbci,sbrc,sbrs,sei,sleep,st,
+    std,sts,sub,subi,wdr},
+  morekeywords=[2]{.org,.include,.equ,.def,.cseg,.dseg,.byte,.db,.dw},
+  morecomment=[l]{;},
+  morestring=[b]",
+}
+% GNU as for the AVR, which Chapter 6 needs once: the same instructions, C comments, and the
+% preprocessor's #include in the directive colour.
+\lstdefinelanguage{gnuas}{
+  alsoletter={.},
+  sensitive=false,
+  morekeywords={adc,add,adiw,and,andi,asr,bld,brcc,brcs,breq,brlo,brne,brsh,bst,call,cbi,
+    cli,com,cp,cpc,cpi,cpse,dec,eor,in,inc,jmp,ld,ldd,ldi,lds,lpm,lsl,lsr,mov,movw,mul,neg,
+    nop,or,ori,out,pop,push,rcall,ret,reti,rjmp,rol,ror,sbi,sbiw,sbci,sbrc,sbrs,sei,sleep,st,
+    std,sts,sub,subi,wdr},
+  morekeywords=[2]{.org,.equ,.section,.global,.text},
+  morecomment=[s]{/*}{*/},
+  morecomment=[l]{;},
+  morecomment=[l][\color{accent}]{\#},
+}
+
+\lstdefinestyle{base}{
+  basicstyle=\ttfamily\small,
+  columns=fixed,
+  keepspaces=true,
+  showstringspaces=false,
+  upquote=true,
+  tabsize=4,
+  breaklines=true,
+  breakatwhitespace=true,
+  aboveskip=0pt, belowskip=0pt,
+  commentstyle=\color{muted},
+  stringstyle=\color{accent2},
+}
+\lstdefinestyle{asm}{style=base, language=avrasm,
+  keywordstyle=\color{accent2!85!black}\bfseries,
+  keywordstyle=[2]\color{accent}}
+\lstdefinestyle{gnuas}{style=base, language=gnuas,
+  keywordstyle=\color{accent2!85!black}\bfseries,
+  keywordstyle=[2]\color{accent}}
+\lstdefinestyle{c}{style=base, language=C,
+  keywordstyle=\color{accent2!85!black}\bfseries,
+  morekeywords={uint8_t,uint16_t}}
+\lstdefinestyle{shell}{style=base, language=bash,
+  keywordstyle={}, morekeywords={}, deletekeywords={test}}
+\lstdefinestyle{output}{style=base, language={}}
+\lstdefinestyle{cpp}{style=base, language=C++,
+  keywordstyle=\color{accent2!85!black}\bfseries}
+
+\tcbset{
+  codeblock/.style={
+    enhanced, listing only,
+    colback=codebg, colframe=codebg, boxrule=0pt, arc=0pt, outer arc=0pt,
+    left=8pt, right=6pt, top=4pt, bottom=4pt,
+    before skip=1.2ex plus 2pt, after skip=1.4ex plus 2pt,
+    borderline west={2pt}{0pt}{#1}},
+}
+\newtcblisting{asm}{codeblock=accent!70, listing options={style=asm}}
+\newtcblisting{shell}{codeblock=accent2!70, listing options={style=shell}}
+\newtcblisting{console}{codeblock=muted!60, listing options={style=output}}
+\newtcblisting{cppcode}{codeblock=accent2!40, listing options={style=cpp}}
+\newtcblisting{ccode}{codeblock=accent2!40, listing options={style=c}}
+\newtcblisting{gnuasm}{codeblock=accent!70, listing options={style=gnuas}}
+
+% ------------------------------------------------------------------------------------------
+% Boxes in the text.
+% ------------------------------------------------------------------------------------------
+% An aside: something true that the surrounding text is not about.
+\newtcolorbox{aside}[1][]{
+  enhanced,
+  colback=fillaccent2!45, colframe=fillaccent2!45, boxrule=0pt, arc=0pt,
+  left=10pt, right=10pt, top=6pt, bottom=6pt,
+  borderline west={2.5pt}{0pt}{accent2},
+  before skip=2ex, after skip=2ex,
+  fontupper=\small,
+  #1}
+% The box that opens a chapter, listing what is in it.
+\newtcolorbox{chapterbox}[1]{
+  enhanced, breakable,
+  colback=white, colframe=rule, boxrule=0.5pt, arc=0pt,
+  left=10pt, right=10pt, top=8pt, bottom=6pt,
+  fonttitle=\small\scshape\lsstyle, coltitle=accent, colbacktitle=white,
+  attach boxed title to top left={xshift=8pt, yshift=-2.2mm},
+  boxed title style={boxrule=0pt, arc=0pt, left=3pt, right=3pt, top=0pt, bottom=0pt},
+  title={#1},
+  before skip=2ex, after skip=2.5ex,
+  fontupper=\small}
+
+% ------------------------------------------------------------------------------------------
+% Exercises. Numbered within the chapter and labelled with their kind; the Cross-check, the
+% one exercise per chapter the whole course is built around, is the one tag in the accent.
+% ------------------------------------------------------------------------------------------
+\RequirePackage{needspace}
+\newcounter{exercise}[chapter]
+\renewcommand{\theexercise}{\thechapter.\arabic{exercise}}
+\newcommand{\kindtag}[2][fillmuted]{%
+  \tcbox[on line, colback=#1, colframe=#1, boxrule=0pt, arc=1.5pt,
+    left=3pt, right=3pt, top=1pt, bottom=1pt, boxsep=0pt]{%
+    \small\scshape\lsstyle\MakeLowercase{#2}}}
+\newcommand{\exercise}[3][fillmuted]{%
+  \par\addvspace{3ex plus 1ex}\needspace{5\baselineskip}%
+  \refstepcounter{exercise}%
+  \noindent{\large\bfseries{\color{accent}Exercise~\theexercise}\quad #2}%
+  \hfill\kindtag[#1]{#3}\par\nopagebreak\vspace{0.8ex}}
+\newenvironment{parts}
+  {\begin{enumerate}[label={\bfseries\alph*)}, leftmargin=1.8em, itemsep=0.8ex]}
+  {\end{enumerate}}
+
+% ------------------------------------------------------------------------------------------
+% Links. Coloured on screen, quiet enough to print.
+% ------------------------------------------------------------------------------------------
+\RequirePackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=accent2!80!black, urlcolor=accent2!80!black,
+  citecolor=accent2!80!black, pdfauthor={Erik Pihl},
+  pdftitle={Embedded Assembly for the ATmega328P}}
+\RequirePackage{bookmark}
+\pdfstringdefDisableCommands{\def\code#1{\detokenize{#1}}\def\S{§}}
+
+\endinput

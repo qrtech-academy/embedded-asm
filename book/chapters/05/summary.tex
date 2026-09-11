@@ -1,0 +1,49 @@
+% Section 5.4, from lectures/L05/README.md: what you should be able to do, questions to test
+% yourself, and the next lecture.
+
+\section{Review}
+\label{c5:sec:review}
+
+\needspace{6\baselineskip}
+\subsection*{What you should be able to do now}
+\begin{itemize}
+  \item Say what a prescaler does, name the five ratios, and say which steps between them are not a
+    factor of eight.
+  \item Configure Timer1 for CTC mode at a chosen prescaler, from the datasheet's bit names.
+  \item Turn a wanted frequency into a prescaler and a compare value, by hand.
+  \item Say why the compare value is one less than the tick count, and what going wrong there costs.
+  \item State the fastest and slowest frequencies a given timer can reach, and say what to do about
+    a frequency below the slowest.
+  \item Explain why an 8-bit timer is so much worse at hitting a frequency exactly than a 16-bit
+    one, in terms of ticks rather than of bits.
+  \item Extend a timer in software so that one interrupt drives several events at different rates.
+  \item Predict the number of cycles between two compare-match interrupts, and say when that number
+    is the same every time and when it is not.
+\end{itemize}
+
+\needspace{6\baselineskip}
+\subsection*{Questions to test yourself}
+\begin{enumerate}
+  \item Why is a delay loop a worse way to wait than a timer, given that both work?
+  \item The prescaler ratios are 1, 8, 64, 256 and 1024. Which steps are the odd ones, and what
+    does that mean when a frequency does not fit at one prescaler?
+  \item You want 1\,kHz from Timer1 at 16\,MHz. Give the prescaler and the compare value, and say
+    whether the result is exact.
+  \item You want the same 1\,kHz from Timer0. Give the prescaler and compare value, and say why
+    they are different numbers for the same frequency.
+  \item An 8-bit timer at 16\,MHz cannot produce 1\,Hz. Say why, in one sentence, and say what you
+    would do instead.
+  \item Two compare-match interrupts are 5333 cycles apart on average, but no individual gap is
+    5333. What is going on, and is the timer at fault?
+\end{enumerate}
+
+\needspace{6\baselineskip}
+\subsection*{Looking ahead}
+Chapter~6 finishes the library, and connects it to the language everything else is written in:
+\begin{itemize}
+  \item The watchdog: a timer whose job is to notice that your program has stopped.
+  \item Timed write sequences, and hardware that refuses to be configured carelessly.
+  \item Sleep modes, and what is still running in each.
+  \item Calling your assembly from C, and C from your assembly, which is where the calling contract
+    you have been following since Chapter~1 finally has another party to it.
+\end{itemize}

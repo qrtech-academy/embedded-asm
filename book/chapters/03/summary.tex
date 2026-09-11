@@ -1,0 +1,52 @@
+% Section 3.4, from lectures/L03/README.md: what you should be able to do, questions to test
+% yourself, and the next lecture.
+
+\section{Review}
+\label{c3:sec:review}
+
+\needspace{6\baselineskip}
+\subsection*{What you should be able to do now}
+\begin{itemize}
+  \item Turn a vector name into the \code{.org} directive that puts a handler at it, in both word
+    and byte addresses, and say which of the two \code{.org} wants and which the simulator
+    reports.
+  \item Say what the hardware saves on entry to a handler and what it does not, and write the
+    prologue and epilogue that make up the difference.
+  \item Explain why \code{SREG} has to be saved before anything that writes flags, and restored
+    after.
+  \item Configure a pin change interrupt, and say what it tells you and what it cannot.
+  \item Identify a variable shared between a handler and the main loop, say how wide the window is
+    in cycles, and close it.
+  \item Predict how long your own handler blocks interrupts, and check the prediction.
+  \item Say which parts of interrupt timing this book's simulator models faithfully and which it
+    does not, and what you would use instead for the parts it does not.
+\end{itemize}
+
+\needspace{6\baselineskip}
+\subsection*{Questions to test yourself}
+\begin{enumerate}
+  \item PCINT0 is vector 3. What goes after \code{.org}, and what would the same line have to say
+    if this book used \code{avr-gcc}?
+  \item An interrupt fires while a \code{ret} is executing. How many cycles pass before the
+    handler's first instruction, at the earliest and at the latest?
+  \item Your handler does \code{inc r24} and nothing else. Name two things wrong with it.
+  \item Two buttons are on port B. One of them is pressed. Which vector fires, and how does the
+    handler find out which button it was?
+  \item A handler increments a 16-bit counter and the main loop reads it with two \code{lds}
+    instructions. Give a value the main loop can read that the counter has never held, and say how
+    many cycles wide the window is.
+  \item Your handler measures 104 cycles. For how long are interrupts disabled, and why is the
+    answer larger than 104?
+\end{enumerate}
+
+\needspace{6\baselineskip}
+\subsection*{Looking ahead}
+Chapter~4 is about data structures with no compiler to lay them out for you:
+\begin{itemize}
+  \item \code{X}, \code{Y} and \code{Z} in earnest: three pointers, and the displacement
+    addressing that makes a struct field access one instruction.
+  \item Where the seven bytes of an LED structure should actually live, and why
+    \code{RAMEND + 1} is not it.
+  \item The stack, now that an interrupt can arrive on top of two nested calls.
+  \item Arrays of drivers, and a subroutine that walks one.
+\end{itemize}

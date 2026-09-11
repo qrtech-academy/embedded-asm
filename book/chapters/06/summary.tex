@@ -1,0 +1,57 @@
+% Section 6.5, from lectures/L06/README.md: what you should be able to do, questions to test
+% yourself, and what comes after the course.
+
+\needspace{10\baselineskip}
+\section{Review}
+\label{c6:sec:review}
+
+\subsection*{What you should be able to do now}
+\begin{itemize}
+  \item Say what a watchdog detects, and name three failures it does not.
+  \item Write the timed sequence correctly, and say what the hardware does when you do not.
+  \item Choose a timeout from a worst-case loop time, and say why the choice is not obvious in
+    either direction.
+  \item Explain why \code{WDRF} must be cleared before \code{WDE} can be, and what goes wrong on the
+    second run of a program that forgets.
+  \item Choose a sleep mode from what the program needs left running, and name the two wake sources
+    that survive every mode.
+  \item State the AVR C calling convention: argument registers, return registers, call-saved
+    registers, and the register the compiler keeps at zero.
+  \item Call an assembly subroutine from C, and a C function from assembly, and say what each side
+    is promising the other.
+  \item Read \code{avr-gcc -S} output and compare it against assembly you wrote for the same job.
+\end{itemize}
+
+\needspace{6\baselineskip}
+\subsection*{Questions to test yourself}
+\begin{enumerate}
+  \item Your program deadlocks waiting for an interrupt that never comes. Does the watchdog help?
+    What if instead it computes a wrong answer very quickly?
+  \item The two writes of the timed sequence must be within four cycles. Why is \code{cli} before
+    them not optional?
+  \item You write the byte \code{0x08} into \code{WDTCSR} meaning ``the four second timeout''. What
+    did you actually ask for, and what happens next?
+  \item A program is reset by the watchdog, restarts, and tries to switch the watchdog off. Why
+    might it fail, and what has to happen first?
+  \item You put the device into power-down and expect Timer1 to wake it in a second. What actually
+    happens?
+  \item You pass a 16-bit value to an assembly subroutine from C. Which registers does it arrive in,
+    and which half is in the lower-numbered one?
+\end{enumerate}
+
+\needspace{6\baselineskip}
+\subsection*{After the book}
+This is the last chapter. What you have built is a driver library in assembly, and the habit that
+goes with it: \textbf{compute the number first, then measure it, and take the disagreement
+seriously.}
+
+The companion repository has two written papers in \file{exam/}, if you want to test yourself on
+paper. They gate nothing and nothing in this book requires them.
+
+\textbf{Real-Time Kernel Design} is the course that follows this one: the same part, the same
+harness, the same check by hand and by measurement, building a preemptive kernel one context switch
+at a time. It names this material a prerequisite and it means it. Chapter~3's ISR contract,
+Chapter~4's stack arithmetic and its loadable stack pointer (\secref{c4:sec:loadsp}), Chapter~5's
+timer arithmetic, and this chapter's C ABI in both directions are used there rather than recapped.
+The half of a kernel that must be assembly is about two files out of a dozen, and knowing
+\emph{which} two is most of what that course is for.

@@ -1,0 +1,263 @@
+% Section 1.1, from lectures/L01/appendix/a_avr_core.md.
+
+\section{The AVR Core}
+\label{c1:sec:core}
+
+\subsection{What kind of machine this is}
+\label{c1:sec:machine}
+An ATmega328P is an 8-bit microcontroller with 32 registers, 2\,KB of RAM, 32\,KB of flash, and
+no operating system, no memory protection, and no cache. It runs one instruction at a time, and
+almost every instruction takes one clock cycle.
+
+Three of its properties will contradict something you know from C, and it is worth naming them
+before they surprise you rather than after.
+
+\textbf{It is a load-store machine.} Arithmetic happens between registers and nowhere else. There
+is no instruction that adds two bytes of memory together; you load one into a register, load the
+other into another register, add, and store the result back. In C you write \code{a += b} and the
+compiler decides how many instructions that is. Here you are the compiler.
+
+\textbf{It is a Harvard machine.} Program memory and data memory are separate address spaces with
+separate instructions. A pointer to a constant string in flash and a pointer to a variable in RAM
+are both 16-bit numbers, and they are not interchangeable, and nothing checks. This is the single
+biggest departure from the flat address space C leads you to expect (\secref{c1:sec:spaces}).
+
+\textbf{It has 32 registers, and they are not all equal.} They are equal to most instructions and
+unequal to a handful of important ones, and the handful is what shapes real AVR code
+(\secref{c1:sec:regfile}).
+
+What it is \emph{not} is slow or crude. At 16\,MHz it executes 16 million instructions a second,
+and almost every one of them does something useful. The reason to write assembly here is not that
+the compiler is bad; it is that on a machine this small you can hold the whole of it in your head,
+and knowing exactly what a routine costs is worth something.
+
+\subsection{The register file}
+\label{c1:sec:regfile}
+Thirty-two 8-bit registers, named \code{r0} to \code{r31}. Every one of them can be a source or a
+destination for \code{mov}, \code{add}, \code{and}, \code{or}, \code{ld}, \code{st} and most of the
+rest of the instruction set.
+
+\bookfigure{register_file}{The 32 AVR registers as two columns of sixteen. The upper half is
+the half immediate instructions can reach, and \code{r26} to \code{r31} are the pointer pairs X,
+Y and Z.}{fig:regfile}
+
+Two things about that picture matter more than the other thirty.
+
+\textbf{Only \code{r16} to \code{r31} can be loaded with a constant.} \code{ldi r16, 0x2A} is
+legal; \code{ldi r15, 0x2A} is not, and the assembler will tell you so. The same restriction
+applies to \code{andi}, \code{ori}, \code{subi}, \code{cpi} and \code{sbci}. The reason is not
+arbitrary: those instructions spend eight of their sixteen bits on the constant, which leaves
+four bits for the register number, and four bits can only count to sixteen
+(\secref{c1:sec:encoding}).
+
+The practical consequence is that the upper half is where the work happens and the lower half is
+where you park things. A routine that needs five working registers and reaches for \code{r10}
+will find it cannot put a constant in it, and will end up loading the constant into \code{r16} and
+moving it, which costs an extra instruction every time.
+
+\textbf{\code{r26} to \code{r31} are also the three pointer registers.} Taken in pairs they form
+the 16-bit pointers \code{X} (\code{r27:r26}), \code{Y} (\code{r29:r28}) and \code{Z}
+(\code{r31:r30}). They are still ordinary registers; nothing stops you using \code{r30} to hold a
+loop counter. But the moment you want to read memory through a pointer, they are the only six
+that can do it, and a routine that has casually filled them with something else has to spill them
+first. Chapter~4 is about this in earnest.
+
+\code{r0} and \code{r1} deserve a note. \code{r0} is where \code{lpm} deposits the byte it read
+from program memory, so a routine using \code{lpm} cannot also be keeping something in \code{r0}.
+\code{r1} has no hardware role at all, but the C compiler keeps zero in it permanently, which
+matters the moment you call C from assembly or the reverse. That is Chapter~6's problem; for now,
+leaving both alone costs you nothing.
+
+\subsection{The status register}
+\label{c1:sec:sreg}
+\code{SREG} is one 8-bit register holding the flags that arithmetic writes and branches read.
+
+\bookfigure{sreg}{\code{SREG} as its eight bits. Bit 7, \code{I}, is the global interrupt
+enable; bits 1 and 0, \code{Z} and \code{C}, are the ones the conditional branches
+read.}{fig:sreg}
+
+\begin{narrowtable}{@{}clp{19em}@{}}
+  \thead{Bit} & \thead{Name} & \thead{Set when} \\
+  \midrule
+  7 & \code{I} & Interrupts are globally enabled. Set by \code{sei}, cleared by \code{cli}. \\
+  6 & \code{T} & A bit copied by \code{bst}, to be copied back by \code{bld}. Rarely used. \\
+  5 & \code{H} & A carry out of bit 3, for BCD arithmetic. Rarely used. \\
+  4 & \code{S} & \code{N} exclusive-or \code{V}: the sign of a \emph{signed} comparison. \\
+  3 & \code{V} & A signed overflow occurred. \\
+  2 & \code{N} & The result's most significant bit was set. \\
+  1 & \code{Z} & The result was zero. \\
+  0 & \code{C} & A carry out of bit 7, or a borrow. \\
+\end{narrowtable}
+
+In practice you will use two of them constantly and the rest almost never. \code{Z} and \code{C}
+are what \code{cp}, \code{cpi} and every arithmetic instruction leave behind, and what the
+branches test:
+
+\begin{narrowtable}{@{}lll@{}}
+  \thead{Branch} & \thead{Taken when} & \thead{Reads} \\
+  \midrule
+  \code{breq} & the two values were equal & \code{Z} set \\
+  \code{brne} & they were not equal & \code{Z} clear \\
+  \code{brlo} & the first was lower, unsigned & \code{C} set \\
+  \code{brsh} & the first was the same or higher, unsigned & \code{C} clear \\
+\end{narrowtable}
+
+\textbf{\code{cp} and \code{cpi} are subtractions whose result is thrown away.} That is the whole
+of what a comparison is on this machine: \code{cp r19, r24} computes \code{r19 - r24}, discards
+the difference, and keeps the flags. So \code{cp} followed by \code{breq} means ``branch if
+equal'', and \code{cp} followed by \code{brlo} means ``branch if the first was lower''. If you
+find yourself unsure which way round a comparison reads, write out the subtraction and the
+ambiguity disappears.
+
+\textbf{The flags are the most volatile state on the machine.} Nearly every instruction writes
+some of them, so \code{cp} and its branch must be adjacent, or nearly so. A \code{mov} between
+them is harmless because \code{mov} writes no flags; an \code{inc} between them is a bug, and one
+that shows up as a branch going the wrong way for no visible reason. When you cannot remember
+whether an instruction touches the flags, the instruction set summary has a column for it, and
+that column is the reason it exists.
+
+Bit 7, \code{I}, is different in kind from the other seven. It is not a result of anything; it is
+a switch, and it controls whether interrupts can happen at all. Chapter~3 is where it matters.
+
+\subsection{Three address spaces}
+\label{c1:sec:spaces}
+This is the part that most often goes wrong for a reader arriving from C, so it is worth being
+slow about.
+
+\bookfigure{memory_spaces}{Three separate address maps side by side: program memory in word
+addresses, data memory from the register file up to internal SRAM, and EEPROM on its
+own.}{fig:spaces}
+
+There is no single address space on this machine. There are three, they overlap numerically, and
+nothing in the instruction set or the assembler will stop you reading one when you meant another.
+
+\textbf{Program memory} holds your instructions and any constants you put there deliberately. It
+is addressed in \textbf{words}, not bytes, which is why \code{PCINT0}'s slot is quoted as
+\code{0x06} while GNU \code{as} wants \code{0x0C}. The entries being 2 apart is a separate fact:
+each slot is two words, so that a two-word \code{jmp} fits in one (\S3.1.2).
+
+Only \code{lpm} reads it. An ordinary \code{ld} pointed at ``address 0x0100'' reads SRAM, not the
+code at word \code{0x0100}, and does so silently.
+
+\textbf{Data memory} is one flat space containing four things in order: the register file, the 64
+I/O registers, 160 extended I/O registers, and finally 2048 bytes of actual SRAM starting at
+\code{0x0100}. \code{RAMEND} is \code{0x08FF}, and it is where you point the stack
+(\secref{c1:sec:program}).
+
+The register file really is addressable there. \code{lds r16, 0x0005} loads the contents of
+\code{r5}. This is true, occasionally useful for a debugger, and something no ordinary program
+does, because \code{mov r16, r5} does the same thing in one cycle instead of two.
+
+\textbf{EEPROM} is 1024 bytes of memory that survives power being removed. It has its own address
+space and \textbf{no load or store instruction reaches it at all}; you write an address into
+\code{EEAR}, a byte into \code{EEDR}, and set a bit in \code{EECR}. This book does not use it, but
+knowing it is a third space rather than a region of the second is the point.
+
+\subsection{The I/O window: two names for one register}
+\label{c1:sec:iowindow}
+Every I/O register has two addresses, and both appear in the datasheet.
+
+\code{PORTB} is \textbf{I/O address \code{0x05}} and \textbf{data space address \code{0x25}}.
+They differ by \code{0x20}, because the I/O registers begin \code{0x20} bytes into the data
+space. Which number you use depends entirely on which instruction you are writing:
+
+\begin{booktable}{@{}p{5.6em}p{9.6em}Lp{3.4em}@{}}
+  \thead{Instruction} & \thead{Takes} & \thead{Reaches} & \thead{Cost} \\
+  \midrule
+  \code{in} / \code{out} & an I/O address, 0 to 63 & the low 64 I/O registers & 1 cycle \\
+  \code{sbi} / \code{cbi} & an I/O address, 0 to 31 & the low 32, one bit at a time & 2 cycles \\
+  \code{lds} / \code{sts} & a data space address & anywhere in data memory & 2 cycles \\
+  \code{ld} / \code{st} & a pointer register & anywhere in data memory & 2 cycles \\
+\end{booktable}
+
+Giving one of them the other's number is the classic first AVR bug. \code{out 0x25, r16} writes
+to I/O register \code{0x25}, which is data space \code{0x45}, which is \code{TCCR0B}: Timer0's
+clock select and its waveform mode. Your LED does nothing, your program looks correct, and
+somewhere else a timer you have not written yet is running at a rate you did not choose.
+
+In this book you will rarely write either number, because \code{.include "m328Pdef.inc"} defines
+\code{PORTB} for you, and it defines it as the \textbf{I/O} address, \code{0x05}. So
+\code{out PORTB, r16} is right, and reaching the same register with \code{sts} means writing the
+\code{0x20} yourself:
+
+\begin{asm}
+out PORTB, r16              ; the I/O address, 0x05
+sts PORTB + 0x20, r16       ; the same register through the data space, 0x25
+\end{asm}
+
+\textbf{Not every register works that way, and the device file tells you which.} \code{WDTCSR} is
+\code{0x60} and \code{TCCR1B} is \code{0x81}, data space addresses already, because those
+registers live above the I/O window and \code{out} cannot reach them at all.
+\code{m328Pdef.inc} marks them \code{; MEMORY MAPPED}, and that comment is the whole rule: if it
+is there, the number is a data space address and you add nothing; if it is not, the number is an
+I/O address and \code{sts} needs \code{+ 0x20}.
+
+\textbf{The mistake this invites is worse than a wrong register.} Write \code{sts PORTB, r16} and
+it assembles without complaint to data space \code{0x0005}, which is not a peripheral at all, but
+the general-purpose register \textbf{r5}. Your port never changes, a register you were using
+quietly takes the value instead, and nothing anywhere reports a problem. Assembly written for
+\code{avr-gcc} does exactly this, because there \code{PORTB} already means \code{0x25}; carrying
+such a line across unchanged is the single most productive source of this bug.
+\secref{c1:sec:studio} has the rest of that comparison.
+
+\subsection{What an instruction is}
+\label{c1:sec:encoding}
+Every AVR instruction is one or two 16-bit words. \code{ldi} is one word, and every bit of it is
+accounted for.
+
+\bookfigure{ldi_encoding}{\code{ldi r16, 0x2A} as sixteen bit cells: the pattern
+\code{1110 KKKK dddd KKKK} above the assembled word, with the opcode, the two halves of the
+immediate and the register field braced separately.}{fig:ldi}
+
+\[
+  \texttt{ldi }R_d, K \;\longrightarrow\; \texttt{1110}\;K_{7:4}\;d_{3:0}\;K_{3:0}
+  \qquad\text{where } d = R_d - 16
+\]
+
+Three things fall out of that layout, and all three are facts about the machine rather than about
+notation.
+
+\textbf{The immediate is split in half.} Bits 11 to 8 carry the top nibble and bits 3 to 0 the
+bottom one, with the register number in between. There is no reason for this beyond the encoding
+being easier to decode in hardware that way, and it is the detail that makes hand-assembling an
+\code{ldi} feel like a puzzle the first time.
+
+\textbf{The register field is four bits, so it counts 0 to 15}, and the machine adds 16. That is
+the whole explanation for \secref{c1:sec:regfile}'s restriction: \code{ldi} cannot name \code{r15}
+because there is nowhere in the instruction to put the number 15 and mean the sixteenth register.
+
+\textbf{The opcode is only four bits.} \code{1110} means \code{ldi} and nothing else, which is a
+lot of encoding space for one instruction, and is why the immediate can afford to be a full byte.
+
+So \code{ldi r16, 0x2A} is \code{1110 0010 0000 1010} = \code{0xE20A}. You will confirm that
+number three ways in this chapter: by hand, in the listing \code{avra} writes beside your source,
+and by looking at what \code{avr-objdump} says the assembler produced (\secref{c1:sec:disasm}).
+
+\subsection{What this machine does not have}
+\label{c1:sec:absent}
+Naming the absences early saves you looking for them later.
+
+\textbf{No barrel shifter.} \code{lsl r18} shifts by exactly one bit. There is no instruction that
+shifts by a variable number of places, so \code{1 << n} for a runtime \code{n} is a \emph{loop},
+and it costs about six cycles per bit. That is the whole reason \code{shift_bits}
+(\secref{c1:sec:shiftbits}) exists, and it is worth sitting with: an operation that is free in C is
+a loop here, and a driver that calls it with a pin number costs different amounts for different
+pins.
+
+\textbf{No division.} There is a hardware multiply (\code{mul}, two cycles), but division is a
+library routine, and a slow one. Powers of two are shifts; everything else is expensive.
+
+\textbf{No stack frame, and no stack pointer discipline.} There is a stack pointer, \code{SP}, and
+\code{rcall} and \code{ret} use it, and that is the entire mechanism. Local variables, parameter
+passing beyond a few registers, and reentrancy are conventions you follow or fail to follow.
+Nothing enforces them. Chapter~2 is about the convention; Chapter~4 is about the stack itself.
+
+\textbf{No protection of any kind.} Writing past the end of an array walks into whatever is next.
+Pointing \code{Z} at \code{0x0000} and storing writes to \code{r0}. Recursing too deep grows the
+stack down into your variables and there is no fault, no message, and no crash, just wrong
+answers.
+
+\textbf{And no \code{nop}-free timing.} There is no cache, no branch predictor and no pipeline
+stall you have to reason about, which is the good news hiding inside all of the above: an
+instruction's cost is a number in a table, the same number every time. That is what makes
+\secref{c1:sec:cycles} possible, and it is a property most machines lost decades ago.

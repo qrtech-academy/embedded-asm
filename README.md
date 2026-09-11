@@ -101,6 +101,14 @@ nothing, they are not a qualification, and no part of the course requires them.
 
 ---
 
+## The Book
+The whole course is also available as a book:
+[Embedded Assembly for the ATmega328P](./book/embedded-asm.pdf). It is built from the sources in
+[`book/`](./book/README.md), which also say how to build it yourself (`make -C book`) and how a new
+edition is released.
+
+---
+
 ## Structure
 
 ```text
@@ -114,6 +122,7 @@ tools/avrsim The simavr harness the suites run your assembly on, as a git submod
 libs/test/   The QAcademy Test framework, as a git submodule.
 diagrams/    Python sources for the generated figures.
 exam/        Two written papers and their solutions. Optional, and marked by nobody here.
+book/        The course typeset as a book: LaTeX sources, the build, and the PDF.
 ```
 
 ---
@@ -193,8 +202,8 @@ of why 2048 bytes and one core are still the right machine to learn this on.
 The source code is released under the [MIT License](./LICENSE): the assembly contracts, the device
 headers, the test suites, the build and CI scripts, and the Python that draws the figures.
 
-The course material is licensed under [CC BY-NC-SA 4.0](./LICENSE-CONTENT): the lectures,
-exercises and solutions, the exam papers, the other Markdown documents, and the figures. You may
+The course material is licensed under [CC BY-NC-SA 4.0](./LICENSE-CONTENT): the lectures, exercises
+and solutions, the exam papers, the book, the other Markdown documents, and the figures. You may
 share and adapt it for any non-commercial purpose, with credit, as long as what you share carries
 the same license. The two submodules carry their own licenses.
 

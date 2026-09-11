@@ -1,0 +1,131 @@
+% Section 2.4, from lectures/L02/appendix/d_hardware.md. Optional, and says so first.
+
+\section{Putting It on a Real Board}
+\label{c2:sec:board}
+
+\subsection{Nothing in this book needs this}
+\label{c2:sec:optional}
+Every exercise is written, assembled, simulated and verified on your laptop. No test knows whether
+you own a board, and none of them will ever ask.
+
+This section exists because an LED that lights is a different experience from a test that passes,
+and because the last step of the toolchain is worth having done once. If you have an Arduino Uno in
+a drawer, this is twenty minutes. If you do not, skip it; the simulator is not a poor substitute
+here, it is the thing the rest of the book is built on.
+
+\subsection{What you need}
+\label{c2:sec:need}
+An \textbf{Arduino Uno}, or any board with an ATmega328P and a USB serial bridge, and a USB cable.
+Nothing else: the LED on pin 13 is already fitted, with its resistor (\secref{c2:sec:resistor}).
+
+\code{avrdude} is a separate package, and the book's install lines leave it out on purpose: this is
+the only section that uses it, and it is optional. Install and check it:
+
+\begin{shell}
+sudo apt -y install avrdude
+avrdude -v 2>&1 | head -n 2
+\end{shell}
+
+\subsection{The file \code{avrdude} wants, you already have}
+\label{c2:sec:hexfile}
+\code{avrdude} wants an Intel HEX file, and \code{avra} writes one. \file{drivers/build/app.hex} is
+the artefact this section flashes, with no conversion step between the build and the programmer.
+
+That is worth a sentence because it is not the usual arrangement. A GNU-toolchain AVR project links
+to an ELF and then runs \code{avr-objcopy -O ihex} to get here; this book skips both, because its
+assembler has no linker and emits the programmer's format directly (\secref{c1:sec:avra}).
+
+The size comes free with the build, near the end of the listing \code{avra} writes beside the
+hex, \file{drivers/build/app.lst}:
+
+\begin{console}
+Segment usage:
+   Code      :        17 words (34 bytes)
+\end{console}
+
+A blinking LED written in assembly comes out at a few dozen bytes against 32\,KB of flash. Worth
+looking at once, if only to see how much of a microcontroller a small program does not use.
+
+\subsection{Finding the board}
+\label{c2:sec:finding}
+Plug it in and look:
+
+\begin{shell}
+ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null
+\end{shell}
+
+An official Uno is usually \file{/dev/ttyACM0}; a clone with a CH340 bridge is usually
+\file{/dev/ttyUSB0}.
+
+If nothing appears, and you are on \textbf{WSL}, that is expected rather than broken: WSL does not
+see USB devices without \code{usbipd-win} forwarding them. Flashing from Windows, or from a native
+Linux install, is the shorter path.
+
+If the device appears but you cannot open it, you are not in the right group:
+
+\begin{shell}
+sudo usermod -a -G dialout "$USER"
+\end{shell}
+
+Then log out and back in, because group membership is established at login.
+
+\subsection{Flashing}
+\label{c2:sec:flashing}
+
+\begin{shell}
+avrdude -c arduino -p atmega328p -P /dev/ttyACM0 -b 115200 \
+        -U flash:w:drivers/build/app.hex:i
+\end{shell}
+
+\begin{booktable}{@{}p{9.4em}L@{}}
+  \thead{Option} & \thead{Means} \\
+  \midrule
+  \code{-c arduino} & Talk to the bootloader over serial, not to an external programmer. \\
+  \code{-p atmega328p} & The device, so \code{avrdude} can check it is talking to what it thinks. \\
+  \code{-P} & The serial port from \secref{c2:sec:finding}. \\
+  \code{-b 115200} & The bootloader's baud rate. An older Uno may want \code{57600}. \\
+  \code{-U flash:w:...:i} & Write this Intel HEX file to flash. \\
+\end{booktable}
+
+The board resets, the bootloader runs, the program is written and verified, and then your code
+starts. If your program has no final loop, you will see it restart repeatedly
+(Exercise~\ref{c1:ex:program}, part d).
+
+\subsection{When it does not work}
+\label{c2:sec:notwork}
+\textbf{\code{programmer is not responding}.} Usually the wrong port, sometimes the wrong baud rate
+on an older board, occasionally a serial monitor somewhere else holding the port open.
+
+\textbf{\code{expected signature ... but found ...}.} The chip is not an ATmega328P. Clone boards
+sometimes carry an ATmega328PB, which is a different device with a different signature and a
+slightly different peripheral set.
+
+\textbf{It flashes cleanly and nothing happens.} Three candidates, in order of likelihood: you
+flashed \file{drivers.hex} rather than \file{app.hex} and there is no reset vector; your program ran
+off the end and is restarting; or the pin is right and the LED is on a different one, because this
+is not an official Uno.
+
+\textbf{The bootloader is not the only way in.} With an ISP programmer you can write flash directly
+and skip it, which is also how you would change the fuses. This book never does either. Fuses are
+worth respecting: the wrong clock setting will make a board that no longer responds to a
+programmer, and recovering it needs a second board and an afternoon.
+
+\subsection{What the board shows you that the simulator does not}
+\label{c2:sec:boardshows}
+Not much, honestly, and it is worth being precise about the short list rather than implying the
+hardware is somehow more real.
+
+\textbf{That your wiring is right.} The simulator models the chip, not the board, so it cannot tell
+you the LED is on pin 12.
+
+\textbf{Analogue reality.} Voltage, current, rise times, a supply that sags. None of it is in the
+simulator and none of it is in this book either, but it is where embedded work eventually goes.
+
+\textbf{That the clock is what you assumed.} Every timing number in this book assumes 16\,MHz. On a
+bare ATmega328P running from its internal oscillator with the factory \code{CKDIV8} fuse set, the
+clock is 1\,MHz and everything is sixteen times slower; clear the fuse and it is 8\,MHz and twice as
+slow. Every cycle count is still exactly right in each case, which is a good demonstration of the
+difference between cycles and seconds.
+
+What the simulator shows you that the board does not is the entire subject of this book: which
+register changed, when, and what it cost.

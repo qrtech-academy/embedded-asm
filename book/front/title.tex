@@ -1,0 +1,59 @@
+% Half-title, title and copyright pages.
+
+\thispagestyle{empty}
+\vspace*{2.2in}
+\begin{flushright}
+  {\Large\bfseries Embedded Assembly for the ATmega328P}
+\end{flushright}
+\cleardoublepage
+
+\thispagestyle{empty}
+\vspace*{1.1in}
+\begin{flushleft}
+  {\color{accent}\rule{0.9in}{2.5pt}}\par\vspace{1.4ex}
+  {\fontsize{32}{38}\selectfont\bfseries Embedded Assembly\\[0.15ex] for the ATmega328P\par}
+  \vspace{2.2ex}
+  {\Large\itshape From your first \code{ldi} to a driver library,\\verified in simulation\par}
+  \vspace{1.2in}
+  {\large Erik Pihl\par}
+  \vfill
+  {\small\scshape\lsstyle qrtech academy\par}
+  \vspace{0.6ex}
+  {\small\color{muted} First edition\,·\,version 1.0.0\,·\,September 2026\par}
+\end{flushleft}
+\newpage
+
+\thispagestyle{empty}
+\vspace*{\fill}
+{\small
+\noindent\textit{Embedded Assembly for the ATmega328P}\\
+First edition, version 1.0.0, September 2026.\\
+Copyright \textcopyright\ 2026 QRTECH Academy.
+
+\medskip
+\noindent The text and figures of this book, and of the course it is typeset from, are licensed
+under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
+(CC BY-NC-SA 4.0). Every line of code in the book and in the companion repository is released
+under the MIT License. The repository holds the assembly contracts, the test suites and the
+simulator harness referred to throughout:
+
+\medskip
+\noindent\url{https://github.com/qrtech-academy/embedded-asm}
+
+\medskip
+\noindent This edition matches the repository at tag \code{v1.0.0}. Later changes to the main
+branch are not reflected here; clone the tag to get the code and test suites exactly as the book
+describes them. The worked solutions are not part of the book, apart from the short answers in
+Appendix~A; they are published later, on the main branch, beside the test suites.
+
+\medskip
+\noindent Every register address and every cycle count quoted in this book comes from one of two
+documents, and the text says which: the \emph{ATmega328P datasheet} and the \emph{AVR Instruction
+Set Manual}, both published by Microchip Technology. ATmega, AVR and Microchip Studio are
+trademarks of Microchip Technology Inc.
+
+\medskip
+\noindent Set in TeX Gyre Pagella and DejaVu Sans Mono with Lua\LaTeX. The figures are drawn
+from code, and the code that draws them is in the repository beside the text.
+\par}
+\cleardoublepage

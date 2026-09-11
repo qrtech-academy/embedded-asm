@@ -1,0 +1,182 @@
+% Section 2.1, from lectures/L02/appendix/a_io_ports.md.
+
+\section{I/O Ports}
+\label{c2:sec:ports}
+
+\subsection{Three registers per port}
+\label{c2:sec:three}
+You have already used two of these. \code{sbi DDRB, 5} and \code{sbi PORTB, 5} lit an LED at the
+end of Chapter~1 (\secref{c1:sec:program}), on one sentence's worth of explanation: \code{DDRx}
+decides whether a pin is an output and \code{PORTx} decides what an output drives. That sentence
+is true and it is about a third of the story, and the missing two thirds are what makes a driver
+possible.
+
+The ATmega328P has three I/O ports available on an Arduino Uno, called B, C and D, and each is
+controlled by three registers. For port B those are \code{DDRB}, \code{PORTB} and \code{PINB}, at
+data space addresses \code{0x24}, \code{0x25} and \code{0x23} (\secref{c1:sec:iowindow}).
+
+The names are unhelpful in a specific way, so it is worth stating what each one is before anything
+else:
+
+\begin{booktable}{@{}p{4.4em}L>{\raggedright\arraybackslash}p{6.4em}@{}}
+  \thead{Register} & \thead{What it is} & \thead{Read or write} \\
+  \midrule
+  \code{DDRx} & \textbf{D}ata \textbf{D}irection \textbf{R}egister. One bit per pin: 0 is input,
+    1 is output. & Both \\
+  \code{PORTx} & For an output pin, the level to drive. For an input pin, the pull-up switch.
+    & Both \\
+  \code{PINx} & The level the pin is actually at. Writing a 1 to it toggles \code{PORTx}.
+    & Both, differently \\
+\end{booktable}
+
+\code{PORTx} is the one that trips people up, because it does two entirely unrelated jobs
+depending on what \code{DDRx} says. And \code{PINx} is the one that surprises them later, because
+writing to it does something that has nothing to do with reading it.
+
+\subsection{Four states of a pin}
+\label{c2:sec:states}
+Two control bits, four combinations, and each one is a different piece of hardware behaviour.
+
+\bookfigure{port_states}{\code{DDRx} against \code{PORTx}: a high-impedance input, an input with
+its pull-up enabled, an output driven low, and an output driven high. \code{PINx} is the third
+register and not part of the grid.}{c2:fig:states}
+
+\textbf{A floating input is the dangerous one.} With \code{DDRx = 0} and \code{PORTx = 0} the pin
+is connected to nothing at all, and reading \code{PINx} gives you whatever the surrounding
+electrical noise induced on it. It is not random in a useful sense and it is not stable; it will
+read 1 while your finger is near the board and 0 when it is not. An input you have not either
+pulled up or wired to something is a bug, not a default.
+
+\textbf{The pull-up is the reason the other three states are easy.} Setting \code{PORTx = 1} on an
+input pin connects an internal resistor of 20 to 50\,k$\Omega$ between the pin and 5\,V. Now the
+pin reads 1 unless something actively pulls it down, which is exactly what a button to ground
+does.
+
+\textbf{An output ignores the pull-up entirely.} Once \code{DDRx = 1}, \code{PORTx} means ``the
+level to drive'', and the resistor is out of the picture.
+
+\subsection{Writing to \code{PINx} toggles the output}
+\label{c2:sec:toggle}
+This is the one genuinely strange thing in this section, and it is worth being explicit about
+because the name gives no hint of it.
+
+Writing a \textbf{1} to a bit of \code{PINx} \textbf{toggles the corresponding bit of
+\code{PORTx}}. Writing a 0 does nothing at all. Reading \code{PINx} is unaffected and still gives
+the pin's actual level.
+
+So storing a mask into \code{PINB} flips exactly the bits the mask selects, and leaves the rest
+alone without having to read anything first. A toggle is one store, and the alternative is a load,
+an exclusive-or and a store. It is faster and, more importantly, it cannot be interrupted halfway
+through, which is a property Chapter~3 will make matter.
+
+Two things this does \textbf{not} mean:
+\begin{itemize}
+  \item It does not toggle the pin directly. It toggles \code{PORTx}, so on an input pin it toggles
+    the pull-up, which is occasionally useful and usually a mistake.
+  \item It is not ``writing to the input register'', whatever the name suggests. Nothing you write
+    to \code{PINx} is ever read back from \code{PINx}.
+\end{itemize}
+
+\subsection{An LED, and a resistor that is not optional}
+\label{c2:sec:resistor}
+
+\bookfigure{led_circuit}{A pin leaving the ATmega328P through a 220\,$\Omega$ series resistor into
+an LED and then to ground. The chip boundary is drawn dashed.}{c2:fig:led}
+
+Configure the pin as an output, drive it high, and current flows through the LED. Drive it low and
+it stops. That is the whole circuit, and the driver in \secref{c2:sec:driver} is a way of saying
+it in assembly.
+
+The resistor sets the current. An LED is not a resistor: its voltage barely changes with current,
+so without something to limit it the current is set by how much the pin can supply, which is about
+40\,mA, which is roughly twice what a small LED survives and exactly the pin's absolute maximum.
+The usual outcome is a dead LED; the occasional outcome is a dead pin.
+
+An Arduino Uno already has an LED and a resistor on pin 13, which is why every example in this
+book uses pin 13 and why none of them requires you to wire anything.
+
+\textbf{The other way round works too, and you will meet it.} An LED can be wired from 5\,V
+through its resistor to the pin, in which case driving the pin \emph{low} lights it. That is called
+sinking rather than sourcing, and it inverts everything your driver means. It is not wrong; it is
+a different board, and reading \code{led_on} without knowing which one you have is how you end up
+with a program that is exactly backwards. On this part the two directions are specified the same,
+whatever the folklore about older AVRs says: 20\,mA either way.
+
+\subsection{A button, and why pressed reads zero}
+\label{c2:sec:button}
+
+\bookfigure{button_circuit}{A pin with the internal 20 to 50\,k$\Omega$ pull-up inside the chip
+boundary, and a button to ground outside it. The pull-up is switched on by writing 1 to
+\code{PORTB} with \code{DDRB} at 0.}{c2:fig:button}
+
+Configure the pin as an input and switch the pull-up on. With the button not pressed, nothing else
+is connected to the pin, and the pull-up holds it at 5\,V, so \code{PINx} reads \textbf{1}. Press
+the button and the pin is shorted to ground, so \code{PINx} reads \textbf{0}.
+
+\textbf{A pressed button reads zero.} Every driver in this book that reports ``is it pressed''
+therefore has to invert what it read, and forgetting to is a bug that produces a program which does
+exactly the opposite of what it should, reliably, which is at least easy to spot.
+
+The alternative wiring, a button from the pin to 5\,V with an external pull-down resistor, gives
+the intuitive polarity. Nobody does it, because it needs a resistor you have to fit and the
+pull-up is free.
+
+\textbf{What the pull-up does not do is debounce.} A mechanical button does not close once; it
+closes, bounces open, closes again, several times over a few milliseconds. The pin faithfully
+reports every one of those, so a program that counts presses by watching for a 1-to-0 transition
+will count one press as four. That is not this chapter's problem, but it is the reason
+Chapter~3's interrupt-driven button behaves in a way you would not predict from this circuit alone.
+
+\subsection{Arduino pin numbers are not port bits}
+\label{c2:sec:pinmap}
+
+\bookfigure{arduino_pins}{Fourteen cells, one per Arduino digital pin: pins 0 to 7 are port D bits
+0 to 7, and pins 8 to 13 are port B bits 0 to 5.}{c2:fig:pins}
+
+The number silkscreened on the board is the board's idea. The device has never heard of it, and a
+different board with the same chip numbers its pins differently.
+
+The mapping is simple enough to state in one line, which is fortunate, because your driver has to
+do it at run time:
+\begin{itemize}
+  \item Arduino pins \textbf{0 to 7} are port \textbf{D}, bits 0 to 7.
+  \item Arduino pins \textbf{8 to 13} are port \textbf{B}, bits \textbf{0 to 5}.
+\end{itemize}
+
+The step at pin 8 is where implementations go wrong. Pin 8 is bit \textbf{0}, not bit 8, so the
+driver has to subtract 8 before it shifts. Shifting by 8 in an eight-bit register gives zero
+(\secref{c1:sec:shiftbits}), so the mask is zero, the LED never lights, nothing reports an error,
+and the symptom looks like a wiring fault.
+
+Port B stops at bit 5 because bits 6 and 7 are the crystal pins on an Arduino Uno. They exist on
+the chip and are not available to you.
+
+\textbf{Build this table yourself before reading it again.} Pin 13 is the one that matters here,
+and deriving the other rows from the rule rather than reading them off is the difference between
+knowing the mapping and having seen it.
+
+\subsection{Reading, modifying, writing}
+\label{c2:sec:rmw}
+A port register holds eight pins. Your LED is one of them. So a driver that wants to turn its LED
+on must not write to \code{PORTB}; it must change one bit of \code{PORTB} and leave the other seven
+as it found them.
+
+Three instructions and five cycles:
+\begin{enumerate}
+  \item \textbf{Read} the whole register into a scratch register, two cycles.
+  \item \textbf{Modify} it, one cycle, by \code{or}-ing in the mask that selects your bit.
+  \item \textbf{Write} the whole register back, two cycles.
+\end{enumerate}
+
+The middle step is where the mask earned its keep. To clear a bit instead, the mask is inverted and
+the \code{or} becomes an \code{and}, which is why \code{shift_bits_inverted} exists as its own
+routine rather than as a \code{com} after \code{shift_bits}.
+
+A driver that assigns instead, \code{sts PORTB + 0x20, r24}, works perfectly with one LED and turns
+off every other output on the port. It passes any test that only has one LED in it, which is why
+the test suite has one with two.
+
+\textbf{Read-modify-write is not atomic}, and on this machine that is three separate instructions
+with two gaps in them. Nothing in this chapter can interrupt those gaps. From Chapter~3 onwards
+something can, and that is where \code{sbi}, \code{cbi} and the \code{PINx} toggle stop being
+micro-optimisations and start being correctness.

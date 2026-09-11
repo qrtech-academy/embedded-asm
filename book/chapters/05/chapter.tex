@@ -1,0 +1,49 @@
+% Chapter 5, typeset from lectures/L05: the README is the opener and the closing summary, and
+% each appendix is a section, in the same order and with the same subsections.
+
+\chapter{Timers}
+\label{c5:ch:timers}
+
+{\large\itshape Counting time in hardware, and the arithmetic of not quite being able to.\par}
+
+\begin{chapterbox}{In this chapter}
+\begin{itemize}
+  \item Why a timer, and what is wrong with a loop that counts.
+  \item The prescaler: five ratios, and the two places the ladder stops multiplying by eight.
+  \item CTC mode, and why the period is \code{OCR1A + 1} ticks rather than \code{OCR1A}.
+  \item Turning a frequency you want into a prescaler and a compare value, and the error left
+    over.
+  \item Frequencies no timer on this device can reach, in both directions.
+  \item Extending a timer in software, so one interrupt can drive several rates.
+  \item A blinker that keeps time while the processor is doing something else.
+\end{itemize}
+\end{chapterbox}
+
+The chapter starts with the counting loop, and its problem. Chapter~2 ended with an LED blinking at
+about 127\,kHz because nothing was slowing it down. The fix is not a delay loop, and
+\secref{c5:sec:timers} is about why. Then the hardware, once: a counter, a prescaler, a compare
+register and a flag. Five paragraphs of datasheet, and then it is arithmetic for the rest of the
+chapter.
+
+Then the arithmetic: given a frequency, which prescaler and which compare value, and how far off
+do you land. Work the table out rather than reading it; the rule is short and the boundary cases
+are where it lives. Then what cannot be reached: an 8-bit timer at 16\,MHz cannot produce 1\,Hz.
+Not badly: at all. And finally counting the interrupts, the software timer that fixes it, and that
+lets one hardware timer drive four events at four rates.
+
+Finish Chapter~4 first. The timer's compare match is an interrupt like any other and its handler
+needs the same prologue, and its software timers are structures in SRAM, laid out and reached the
+way Chapter~4's were.
+
+Two predictions are worth making before anything runs:
+\begin{itemize}
+  \item what compare value gives exactly 1\,kHz, and whether ``exactly'' is really exact.
+  \item whether two consecutive interrupts are the same number of cycles apart.
+\end{itemize}
+The second is this chapter's cross-check, and the answer is: sometimes.
+
+\input{chapters/05/timers}
+\input{chapters/05/frequency}
+\input{chapters/05/build}
+\input{chapters/05/summary}
+\input{chapters/05/exercises}

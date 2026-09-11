@@ -1,0 +1,184 @@
+% Section 6.6, from lectures/L06/appendix/e_exercises.md.
+
+\section{Exercises}
+\label{c6:sec:exercises}
+
+\begin{aside}
+\textbf{How to check your work.} Exercise~\ref{c6:ex:driver} is checked by this chapter's test
+suite: write the file at the path the specification gives, then run \code{make test}. The suite is
+cumulative and runs Chapter~1 to Chapter~5's tests too. Exercise~\ref{c6:ex:capstone} is the C
+capstone, which no test covers: it needs the C runtime and is built by hand, with the command in
+\secref{c6:sec:asmfromc}.
+
+The rest will have worked solutions in the companion repository, published later as
+\file{lectures/L06/appendix/f_solutions.md}, and the hand calculations have short answers in
+Appendix~\ref{app:answers}. Work each one before you read it.
+
+\textbf{No hardware is needed for any of this.}
+\end{aside}
+
+Each exercise is labelled with its kind. There is exactly one \textbf{Cross-check}, and here it is
+Exercise~\ref{c6:ex:crosscheck}. It is the last one in the book.
+
+% ------------------------------------------------------------------------------------------
+\exercise{What it catches}{Recall}
+\label{c6:ex:catches}
+\begin{parts}
+  \item State, in one sentence, the only thing a watchdog detects.
+  \item For each of the following, say whether a watchdog would catch it:
+    \begin{itemize}
+      \item a loop that never exits;
+      \item a driver writing to the wrong port register;
+      \item the torn 16-bit read from Chapter~3;
+      \item a program waiting for an interrupt that will never arrive;
+      \item a stack that has grown into the variables.
+    \end{itemize}
+  \item One of those five is ``sometimes, eventually''. Which, and what has to happen first?
+  \item Give the two modes a timeout can produce, and say which of them is a safety mechanism.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Where to pet it}{Design}
+\label{c6:ex:pet}
+\begin{parts}
+  \item A program has a main loop and a timer interrupt firing every millisecond. Somebody puts
+    \code{watchdog_reset} in the timer handler, because it is called reliably. Explain precisely
+    what that achieves and what it destroys.
+  \item Where should it go instead, and what property does that location need?
+  \item The main loop has two branches, one of which runs rarely. Where do you pet the watchdog so
+    that a fault in the rare branch is still caught?
+  \item A program pets the watchdog in three different places. Say what has probably gone wrong
+    with its design.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Control bytes}{Hand calculation}
+\label{c6:ex:bytes}
+Using \secref{c6:sec:registers}, and without running anything:
+\begin{parts}
+  \item Give the byte for a 1 second timeout in system reset mode.
+  \item Give the byte for an 8 second timeout in interrupt mode.
+  \item Give the byte for a 250\,ms timeout in interrupt-and-reset mode.
+  \item Somebody wants four seconds and writes \code{0x08}. Say exactly what they asked for
+    instead, and describe what the device does from that moment on.
+  \item Why is their mistake so much worse than, say, asking for 2 seconds and getting 250\,ms?
+\end{parts}
+
+\noindent\textbf{Check yourself:} the timeout table is in \secref{c6:sec:registers}, and the four
+selector bits are not contiguous, so no control byte is ever the timeout number.
+
+% ------------------------------------------------------------------------------------------
+\exercise{The timed sequence}{Recall}
+\label{c6:ex:sequence}
+\begin{parts}
+  \item Give the two writes, in order, and the constraint between them.
+  \item Four cycles is the limit. Roughly how many cycles would an interrupt take if one landed
+    between the two writes? Say why \code{cli} is therefore not optional.
+  \item On a device fresh from reset, what is in \code{WDTCSR} if the second write arrives too
+    late? Say why that particular value is the worst possible outcome.
+  \item Why must \code{WDRF} be cleared before \code{WDE} can be? Give the reason the hardware
+    behaves that way, and the consequence for a driver that forgets.
+  \item The sequence begins with \code{wdr}. What would go wrong without it?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The watchdog driver}{Code}
+\label{c6:ex:driver}
+Write \file{drivers/source/watchdog.asm} to the specification in \secref{c6:sec:driver}.
+\begin{parts}
+  \item Write all four subroutines.
+  \item Run \code{make test}.
+  \item Insert four \code{nop} instructions between the two writes of the sequence, rebuild, and
+    note what \code{WatchdogDriver.InitWritesTheByteAsked} reports. Say what that value means, then
+    remove them.
+  \item Replace the save-and-restore of \code{SREG} with a plain \code{cli} and \code{sei}. Note
+    which test fails and describe the bug it is protecting you from.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Calling it from C}{Code}
+\label{c6:ex:capstone}
+Write \file{drivers/app/main.c} to the specification in \secref{c6:sec:capstone}.
+\begin{parts}
+  \item Write a C program that calls \code{shift_bits} and does something with the result. Change
+    nothing in \file{utils.asm}; the \file{utils_gnu.S} you translate from it is a transcription,
+    not a redesign.
+  \item Translate \file{utils.asm} into \file{drivers/source/utils_gnu.S} using the table in
+    \secref{c6:sec:asmfromc}, then build with \code{avr-gcc}, giving it both the \file{.c} and the
+    \file{.S}. This build shares no flag with the book's usual one: say what
+    \code{-mmcu=atmega328p} is deciding that \code{avra} decided some other way, and say what the
+    startup code does that your \file{main.asm} used to do by hand.
+  \item Declare the prototype's argument as \code{uint16_t} instead, rebuild, and say what now
+    happens for an argument of 5 and for an argument of 300. Then declare the result as
+    \code{uint16_t} as well and answer the same question. Then put both back.
+  \item Write a C function and call it from your assembly. Say which registers you had to assume it
+    would destroy.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Sleeping}{Design}
+\label{c6:ex:sleep}
+\begin{parts}
+  \item For each of idle, power-down and power-save, say what is still running.
+  \item A program sleeps in power-down and expects Timer1 to wake it after one second. Describe
+    what actually happens, and how long it lasts.
+  \item Name the two wake sources that survive every sleep mode, and say why each of them does.
+  \item Design, in words, a device that does something once every eight seconds and spends the
+    rest of its life drawing microamps. Say which peripheral wakes it and in which mode.
+  \item A device refuses to stay asleep: it wakes immediately, every time. Give two plausible
+    causes.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise[fillaccent]{Your assembly against the compiler's}{Cross-check}
+\label{c6:ex:crosscheck}
+\emph{Compute it by hand, measure it, reconcile.}
+
+The last cross-check in the book, and the only one where the thing you are checking against is
+somebody else's work.
+\begin{parts}
+  \item \textbf{By hand.} From Chapter~1, your \code{shift_bits} costs $6n + 10$ cycles
+    (\secref{c1:sec:onpaper}). Write that down.
+  \item \textbf{Write the same thing in C.} A function taking a byte, returning \code{1} shifted
+    left that many times, using a loop. \textbf{Call it \code{c_shift_bits}}, so that both live in
+    one ELF without colliding. Compile it at \code{-Os} and read the assembly with
+    \code{avr-gcc -S}. Count the instructions and predict its cost as a formula in $n$, before
+    measuring.
+  \item \textbf{By measurement.} \file{drivers/build/drivers.hex} holds no C, so build one image
+    that holds both, the same hand build the capstone uses, and point \code{make measure} at it:
+\begin{shell}
+avr-gcc -mmcu=atmega328p -Os \
+        drivers/app/main.c drivers/source/utils_gnu.S \
+        -o drivers/build/mixed.elf
+make measure IMAGE=mixed \
+     CALLS="shift_bits:0 c_shift_bits:0 shift_bits:8 c_shift_bits:8"
+\end{shell}
+    \code{IMAGE} names the stem and not the extension, so the same variable reaches
+    \file{drivers.hex} and this \file{mixed.elf}; \file{ci/measure.sh} takes whichever of the two
+    exists.
+  \item \textbf{Reconcile.} Give both formulas. They are not the same shape, and one of them wins
+    at some arguments and loses at others: say where they cross.
+  \item \textbf{The surprise.} At one specific argument the compiler's version is \textbf{faster}
+    than yours. Which argument, by how much, and what did the compiler do that you did not? Look
+    at the instruction it used and say what it does.
+  \item \textbf{Code size.} Count the instructions in each. Now say which version you would ship,
+    and note that ``the hand-written one is smaller and faster'' is not the answer the numbers
+    support.
+  \item \textbf{What this is evidence for.} In one paragraph, say what this comparison does and
+    does not establish about writing assembly by hand. Be specific about the size of the win and
+    about what it cost you to get it.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{What you would actually reach for}{Design}
+\label{c6:ex:reach}
+The book is over. For each of the following, say whether you would write assembly, write C, or do
+something else entirely, and why.
+\begin{parts}
+  \item A driver for a new sensor on the SPI bus.
+  \item An interrupt handler that must respond within two microseconds.
+  \item A routine that toggles a pin for a fixed 3 microseconds, exactly, every time.
+  \item The main loop of a battery-powered logger.
+  \item Working out why a program that worked yesterday now resets every few seconds.
+  \item One of the five answers above is the one this book was really for. Say which.
+\end{parts}

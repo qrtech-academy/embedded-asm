@@ -1,0 +1,99 @@
+% Appendix A: short answers to the hand-calculation exercises, numbers only. The reasoning, and
+% the plausible wrong answers, stay in the worked solutions in the companion repository. Add each
+% new chapter's hand-calculation exercises here as it is typeset.
+
+\chapter{Short Answers}
+\label{app:answers}
+
+{\small
+\noindent The numbers only, for the hand-calculation exercises, so that an answer worked on paper
+can be checked on paper. How each one is reached, and the plausible wrong answers, will be in the
+worked solutions, which are published later in the companion repository.
+
+\newcommand{\answer}[2]{\par\addvspace{1.2ex}\needspace{3\baselineskip}\noindent
+  {\bfseries\color{accent}Exercise~\ref{#1}}\quad{\bfseries #2}\par\nopagebreak\smallskip\noindent}
+\newcommand{\pt}[1]{\textbf{#1)}~}
+
+\answer{c1:ex:assemble}{Assembling four instructions by hand}
+\pt{a}\code{0xE20A}\quad \pt{b}\code{0xE28A}\quad \pt{c}\code{0xEFFF}\quad
+\pt{d}\code{0xE043}\quad \pt{e}Rejected: \code{ldi} can only name \code{r16} to \code{r31}. A
+word forced out anyway would load \code{r31}.
+
+\answer{c1:ex:counting}{Counting by hand}
+\pt{a}10 cycles\quad \pt{b}52 cycles\quad \pt{c}$6n + 10$\quad \pt{d}\code{cp} 4 times,
+\code{breq} 4 times, 1 of them taken\quad \pt{e}$7n + 10$: the extra \code{inc} on each trip is
+the extra cycle per bit.
+
+\answer{c2:ex:translate}{Translating pin numbers}
+\pt{a}\begin{tabular}[t]{@{}lllllll@{}}
+  Pin & Port & Bit & Mask & \code{PINx} & \code{DDRx} & \code{PORTx} \\
+  3 & D & 3 & \code{0x08} & \code{0x0029} & \code{0x002A} & \code{0x002B} \\
+  8 & B & 0 & \code{0x01} & \code{0x0023} & \code{0x0024} & \code{0x0025} \\
+  13 & B & 5 & \code{0x20} & \code{0x0023} & \code{0x0024} & \code{0x0025} \\
+\end{tabular}\par\smallskip
+\pt{b}\code{0x01}; without the subtraction \code{0x00}, and the LED never lights\quad
+\pt{c}\code{PB6} and \code{PB7}, the crystal's pins.
+
+\answer{c2:ex:predict}{Predicting the driver's cost}
+\pt{a}30 cycles more\quad \pt{b}35\quad \pt{c}65\quad \pt{d}\code{led_toggle}: one
+\code{st} after the shift, with nothing read\quad \pt{e}Only the shift loop's trip count depends on the pin.
+
+\answer{c3:ex:response}{Addresses and response times}
+\pt{a}\begin{tabular}[t]{@{}llll@{}}
+  Vector & Number & Word & Byte \\
+  PCINT0 & 3 & \code{0x0006} & \code{0x000C} \\
+  PCINT2 & 5 & \code{0x000A} & \code{0x0014} \\
+  WDT & 6 & \code{0x000C} & \code{0x0018} \\
+\end{tabular}\par\smallskip
+\pt{b}6 cycles, $4 + 2$\quad \pt{c}9, $3 + 4 + 2$\quad \pt{d}7 and 10; \code{jmp} reaches
+all of flash and \code{rjmp} only $\pm$2K words\quad \pt{e}110, $4 + 2 + 104$.
+
+\answer{c3:ex:counter}{The shared counter}
+\pt{a}\code{0x01FF}, which is 511; the counter held 255, then 256\quad \pt{b}2 cycles; about
+one read in eight thousand, so a wrong value every eight seconds or so\quad \pt{c}\code{cli}
+before and \code{sei} after, 2 cycles\quad \pt{d}It enables interrupts whatever they were
+before; save \code{SREG}, \code{cli}, load, restore \code{SREG}: 3 cycles\quad \pt{e}No: one
+\code{lds} is one instruction.
+
+\answer{c4:ex:fourways}{Four ways to read a byte}
+\pt{a}\code{0x33}, \code{Z} stays \code{0x0204}\quad \pt{b}\code{0x33}, \code{Z} becomes
+\code{0x0205}\quad \pt{c}\code{0x22}, \code{Z} becomes \code{0x0203}\quad \pt{d}\code{0x66},
+\code{Z} stays \code{0x0204}\quad \pt{e}(a) and (d)\quad \pt{f}Two cycles each, so the choice is
+only about where the pointer is left.
+
+\answer{c4:ex:arrays}{Array arithmetic}
+\pt{a}\code{0x0300}, \code{0x0307}, \code{0x030E}, \code{0x0323}\quad \pt{b}7, \code{LED_SIZE}
+in \file{led.inc}\quad \pt{c}\code{0x030C}, the sixth byte of entry 1, so the driver reads
+\code{0x0100} (\code{0x0n00} for bit $n$) as a port register\quad \pt{d}Every address is legal,
+and entry 0 is at the base under either stride\quad \pt{e}\code{0x031E}: the stride is 10\quad \pt{f}292 LEDs, 204
+buttons; the real limit is the 14 pins.
+
+\answer{c4:ex:depth}{How deep does it go}
+\pt{a}4 bytes\quad \pt{b}15, $0 + 2 + 9 + 2 \times 2$\quad \pt{c}\code{SP} ends at
+\code{0x08F0}; the lowest byte used is \code{0x08F1}\quad \pt{d}2 bytes, the program
+counter\quad \pt{e}21, $2 \times 3 + 2 + 9 + 2 \times 2$\quad \pt{f}No: it occupies
+\code{0x08F0} to \code{0x08F6}, and the stack reaches down to \code{0x08F1}.
+
+\answer{c5:ex:compare}{Prescaler and compare}
+\pt{a--c}\begin{tabular}[t]{@{}lll@{}}
+  Wanted & Timer1, 16-bit & Timer0, 8-bit \\
+  500\,Hz & \code{/1}, \code{OCR = 31999}, exact & \code{/256}, \code{OCR = 124}, exact \\
+  440\,Hz & \code{/1}, \code{OCR = 36363}, $-0.0010\%$ & \code{/256}, \code{OCR = 141}, $+0.032\%$ \\
+  3\,kHz & \code{/1}, \code{OCR = 5332}, $+0.0063\%$ & \code{/64}, \code{OCR = 82}, $+0.40\%$ \\
+\end{tabular}\par\smallskip
+\pt{d}500\,Hz: 32000 ticks divide the clock exactly, and the prescalers are powers of
+two\quad \pt{e}3\,kHz, 64 times worse: 83 ticks against 5333.
+
+\answer{c5:ex:reach}{What cannot be reached}
+\pt{a}$f_{\mathrm{clk}} / (1024 \times \text{counter values})$: 0.2384\,Hz for 16 bits, 61.04\,Hz
+for 8\quad \pt{b}Yes: \code{/1024}, \code{OCR1A = 31249}, exact\quad \pt{c}No: 156250 ticks, and
+the counter holds 65536\quad \pt{d}The counter runs out of values: a full 8-bit count at
+\code{/1024} spans only 1/61 of a second\quad \pt{e}A 1\,kHz interrupt and a software target of
+10000\quad \pt{f}16\,MHz, one tick at a prescaler of 1; nothing is shorter than one tick.
+
+\answer{c6:ex:bytes}{Control bytes}
+\pt{a}\code{0x0E}, selector 6 plus \code{WDE}\quad \pt{b}\code{0x61}, selector 9 as \code{0x21}
+plus \code{WDIE}\quad \pt{c}\code{0x4C}, selector 4 plus both\quad \pt{d}System reset at 16\,ms:
+the device resets, starts up, and resets again, for ever\quad \pt{e}A short timeout is a wrong
+setting; \code{0x08} is a device that no longer runs.
+\par}

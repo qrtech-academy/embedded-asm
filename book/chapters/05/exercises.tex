@@ -1,0 +1,172 @@
+% Section 5.5, from lectures/L05/appendix/d_exercises.md.
+
+\section{Exercises}
+\label{c5:sec:exercises}
+
+\begin{aside}
+\textbf{How to check your work.} Exercise~\ref{c5:ex:driver} is checked by this chapter's test
+suite: write the file at the path the specification gives, then run \code{make test}. The suite is
+cumulative and runs Chapter~1 to Chapter~4's tests too.
+
+The rest will have worked solutions in the companion repository, published later as
+\file{lectures/L05/appendix/e_solutions.md}, and the hand calculations have short answers in
+Appendix~\ref{app:answers}. Work each one before you read it.
+
+\textbf{No hardware is needed for any of this.}
+\end{aside}
+
+Each exercise is labelled with its kind. There is exactly one \textbf{Cross-check}, and here it is
+Exercise~\ref{c5:ex:crosscheck}.
+
+% ------------------------------------------------------------------------------------------
+\exercise{Why not a loop}{Recall}
+\label{c5:ex:loop}
+\begin{parts}
+  \item Give three reasons a counting loop is a worse way to wait than a timer. One of them is
+    about the processor, one about arithmetic, and one about interrupts.
+  \item Name the four pieces of hardware in the timer and say which two you choose.
+  \item What does CTC stand for, and what does the hardware do on a match that normal mode does
+    not?
+  \item A delay loop and a CTC timer are each one cycle out per period. After an hour, how do the
+    two errors compare? Say why.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{Prescaler and compare}{Hand calculation}
+\label{c5:ex:compare}
+At 16\,MHz, for each frequency below, give the prescaler and the compare value for a 16-bit timer
+and for an 8-bit one, and the error in each case.
+\begin{parts}
+  \item 500\,Hz
+  \item 440\,Hz
+  \item 3\,kHz
+  \item For one of the three, both timers are exact. Say which and why it is not luck.
+  \item For another, the 8-bit timer is more than an order of magnitude worse. Say which, give the
+    ratio, and explain it in terms of ticks rather than of bits.
+\end{parts}
+
+\noindent\textbf{Check yourself:} the 3\,kHz row is worked in \secref{c5:sec:actual}, and the rule
+that produces every row is \secref{c5:sec:choosing}.
+
+% ------------------------------------------------------------------------------------------
+\exercise{Choosing a prescaler}{Design}
+\label{c5:ex:choose}
+\begin{parts}
+  \item State the rule for choosing a prescaler, and justify it in one sentence.
+  \item The ratios are 1, 8, 64, 256, 1024. A frequency needs 70000 ticks at a prescaler of 1.
+    Which prescaler do you end up at, how many ticks is that, and how much resolution did you lose
+    compared with the one that did not fit?
+  \item The four steps in that ladder are not all the same size. Say which are which, and when you
+    would notice.
+  \item Somebody suggests always using a prescaler of 1024 ``to be safe''. Give two things that goes
+    wrong.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The registers}{Recall}
+\label{c5:ex:registers}
+\begin{parts}
+  \item Name the four registers Timer1 needs for a CTC interrupt, and what goes in each.
+  \item All four are at \code{0x60} or above. What does that rule out, and is the failure loud or
+    quiet?
+  \item \code{TCCR1B} holds both the mode bit and the clock select bits. Describe the bug that
+    follows from that, and what it looks like from outside.
+  \item The datasheet says to write a 16-bit register's high byte first. Say why, and say whether
+    the simulator would catch you getting it wrong.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The software timer}{Code}
+\label{c5:ex:driver}
+Write \file{drivers/source/timer.asm} to the specification in \secref{c5:sec:driver}.
+\begin{parts}
+  \item Write all five subroutines.
+  \item Run \code{make test}.
+  \item Change \code{timer_tick} so that it compares before incrementing rather than after. Note
+    which tests fail, then put it back.
+  \item Change it to compare only the low bytes of the count and the target. Note which single test
+    catches it, and say why every other test passes.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{The hardware setup}{Code}
+\label{c5:ex:setup}
+Extend \file{drivers/app/main.asm} to the specification in \secref{c5:sec:setup}.
+\begin{parts}
+  \item Configure Timer1 for a 1\,kHz compare-match interrupt, using the prescaler and compare
+    value you worked out by hand.
+  \item Add the handler at the \code{TIMER1_COMPA} vector. Give the \code{.org} address you used
+    and say where the number came from.
+  \item Initialise a second LED, on Arduino pin 8, and have the handler call \code{timer_tick} on a
+    software timer with a target that blinks it at a rate you can see. Say what target you chose
+    and why.
+  \item \code{make build} should build \file{app.hex}.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{What cannot be reached}{Hand calculation}
+\label{c5:ex:reach}
+\begin{parts}
+  \item Give the formula for the slowest frequency a timer can reach, and evaluate it at 16\,MHz for
+    both counter widths.
+  \item Can a 16-bit timer produce 0.5\,Hz? Give the prescaler and compare value, or say why not.
+  \item Can it produce 0.1\,Hz? Same question.
+  \item An 8-bit timer cannot produce 1\,Hz. Explain in one sentence why no value of \code{OCR0A}
+    helps.
+  \item You need 0.1\,Hz and you have a 16-bit timer. Describe the arrangement you would use, and
+    give one interrupt rate and one target that achieve it.
+  \item What is the fastest compare rate any of these timers can produce, and why is asking for
+    more not merely inaccurate?
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise[fillaccent]{How far apart are two interrupts}{Cross-check}
+\label{c5:ex:crosscheck}
+\emph{Compute it by hand, measure it, reconcile.}
+\begin{parts}
+  \item \textbf{By hand.} For a 1\,kHz compare-match interrupt from Timer1 at 16\,MHz, give the
+    prescaler, the compare value, and the number of CPU cycles between two interrupts.
+  \item \textbf{In cycles.} Turn your \code{OCR1A} back into a period:
+    $\text{prescaler} \times (\mathrm{OCR1A} + 1)$ cycles, and then into microseconds. Do this
+    before (c).
+  \item \textbf{By measurement.} Build a program whose handler toggles a pin and does nothing
+    else: make \code{PB0} an output, and let the handler be \code{sbi PINB, 0} and \code{reti}.
+    Then:
+\begin{shell}
+make measure IMAGE=app CALLS="--watch B0 --run 200000"
+\end{shell}
+    \code{--watch} records every transition of a pin and reports the gaps between them, and a
+    period is a gap. Ignore the first gap; part (h) is about why.
+  \item \textbf{Reconcile.} All three should agree exactly, and they do. Say in one sentence why a
+    timer is the one thing in this book where that is unsurprising.
+  \item \textbf{Now ask for 3\,kHz instead.} Compute the prescaler, compare value and period in
+    cycles, then measure it the same way.
+  \item \textbf{The discrepancy.} Your computed period is 5333 cycles. \textbf{No measured gap is
+    5333.} Write down what you actually measured, then answer three questions:
+    \begin{itemize}
+      \item Is the timer wrong?
+      \item Is the average right?
+      \item What is quantising the measurement, given that the timer is exact?
+    \end{itemize}
+  \item \textbf{Test your explanation.} Whatever you decided in (f), it makes a prediction about
+    compare values that give an \textbf{even} period. Change \code{OCR1A} to 5331 and then to 5333,
+    measure both, and say whether your explanation survived.
+  \item \textbf{The first gap.} In every one of these runs the first gap is different from all the
+    others: a few cycles longer than a period. Explain it, and say whether it would still happen on
+    real hardware.
+\end{parts}
+
+% ------------------------------------------------------------------------------------------
+\exercise{When the handler is too slow}{Design}
+\label{c5:ex:slow}
+\begin{parts}
+  \item Your handler takes 800 cycles and the compare match happens every 16000. What fraction of
+    the processor is the handler using?
+  \item The same handler, with the interrupt rate raised to 100\,kHz. Now what?
+  \item Describe precisely what happens when a compare match occurs while the previous handler is
+    still running. Is the interrupt lost or delayed?
+  \item Two matches occur during one long handler. Now what, and how does this differ from (c)?
+  \item The software timers built on that interrupt now run slow. Say by how much, in terms of the
+    interrupts that were missed, and say whether anything in the program could detect it.
+  \item Give two ways to make the problem visible rather than silent, and say what each costs.
+\end{parts}
