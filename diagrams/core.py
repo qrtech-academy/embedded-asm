@@ -28,8 +28,7 @@ import style
 # ----------------------------------------------------------------------------------------
 
 # The pointer register pairs, low byte first. These are r26 to r31, so they are the bottom
-# six cells of the right-hand column, which is also why the pointer figure in L04 can reuse
-# this drawing unchanged.
+# six cells of the right-hand column.
 _POINTERS = {26: "XL", 27: "XH", 28: "YL", 29: "YH", 30: "ZL", 31: "ZH"}
 
 
@@ -60,7 +59,7 @@ REGISTER_FILE = regfile.figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.3: the three address spaces.
+# A.4: the three address spaces.
 #
 # Sizes and addresses from the ATmega328P datasheet. RAMEND is 0x08FF, which is the number
 # the reader will write into the stack pointer in this lecture's first complete program.
@@ -113,7 +112,7 @@ MEMORY_SPACES = memory.figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.5: what an instruction is, once assembled.
+# A.6: what an instruction is, once assembled.
 #
 # `ldi Rd, K` is 1110 KKKK dddd KKKK, with d = Rd - 16. So `ldi r16, 0x2A` assembles to
 # 0xE20A. Checked against avr-gcc rather than taken from the manual alone.
@@ -211,5 +210,5 @@ TOOLCHAIN = flow.figure(
         flow.Edge(4, 6),
     ],
     caption=("A hex file carries addresses and bytes and nothing else, so the harness reads the",
-             "map beside it. That pair is what lets a test call led_init by name, set r24 and",
-             "r22, run it, and read DDRB afterwards."))
+             "map beside it. That pair is what lets a test call led_init by name, set r25:r24",
+             "and r22, run it, and read DDRB afterwards."))

@@ -58,11 +58,11 @@ def _canvas(caption: tuple[str, ...], centre: float, left: float, right: float,
 
 
 # ----------------------------------------------------------------------------------------
-# A.5: an LED, driven high.
+# A.4: an LED, driven high.
 #
 # Drawn in the source configuration, where the pin at 5 V lights the LED, because that is what
 # `led_on` writing a 1 to PORTB means and the arrangement the reader will predict. The sink
-# configuration, where the LED lights when the pin goes low, is the other half of A.5's prose.
+# configuration, where the LED lights when the pin goes low, is the other half of A.4's prose.
 # ----------------------------------------------------------------------------------------
 _LED_RESISTOR_X = PIN_X + LEAD
 _LED_LED_X = _LED_RESISTOR_X + DEVICE
@@ -101,7 +101,7 @@ LED_CIRCUIT = style.Figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.6: a button, against the internal pull-up.
+# A.5: a button, against the internal pull-up.
 #
 # The pull-up is drawn inside the chip boundary on purpose. It is the single most useful thing
 # to understand about this circuit: there is a resistor, you did not fit it, and it is switched
@@ -123,7 +123,7 @@ _CHIP_BOTTOM = -2.1
 _BUTTON_CAPTION = (
     "Not pressed, the pull-up holds the pin at 5 V and PINB reads 1. Pressed, the button shorts",
     "it to ground and PINB reads 0. A pressed button reads zero, which is the wrong way round",
-    "from every intuition, and is the whole reason button_pressed has to invert what it read.")
+    "from every intuition, and is the whole reason btn_pressed has to invert what it read.")
 
 
 def _draw_button(drawing, ax) -> None:

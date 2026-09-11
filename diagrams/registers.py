@@ -70,18 +70,18 @@ _PCICR = Register(
 
 _PCMSK0 = Register(
     "PCMSK0",
-    [Bit("PCINT7", "muted"), Bit("PCINT6", "muted"), Bit("PCINT5", "accent"), Bit("PCINT4"),
+    [Bit("PCINT7", "muted"), Bit("PCINT6", "muted"), Bit("PCINT5"), Bit("PCINT4", "accent"),
      Bit("PCINT3"), Bit("PCINT2"), Bit("PCINT1"), Bit("PCINT0")],
     address="0x6B")
 
 
 def _annotate_pcint(ax, layout) -> None:
-    """Mark the two bits an Arduino Uno button on pin 13 actually needs."""
+    """Mark the two bits an Arduino Uno button on pin 12 actually needs."""
     left, right = layout.cell_x(layout.bit_index(0, "PCIE0"))
     _, high = layout.row_y(0)
     shapes.brace(ax, left, right, high + BRACE_LIFT, "one whole port", size=style.TINY_SIZE)
 
-    left, right = layout.cell_x(layout.bit_index(1, "PCINT5"))
+    left, right = layout.cell_x(layout.bit_index(1, "PCINT4"))
     low, _ = layout.row_y(1)
     shapes.brace(ax, left, right, low - 0.30, "one pin of it", below=True,
                  size=style.TINY_SIZE)

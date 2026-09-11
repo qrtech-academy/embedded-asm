@@ -48,21 +48,21 @@ in a directory listing.
 | `style.py` | Every color, line weight, font, fill and the output scale. Restyling every figure at once is one edit here. |
 | `shapes.py` | The matplotlib primitives more than one module needs: a filled cell, a brace, a span, a callout arrow. |
 | `bitfield.py` | A register drawn as its named bits. The workhorse: almost everything this device does is configured by one. |
-| `regfile.py` | The 32 registers, as two columns of sixteen. One drawing, four lectures' worth of questions. |
+| `regfile.py` | The 32 registers, as two columns of sixteen. One drawing, three lectures' worth of questions. |
 | `memory.py` | Address-space maps: labelled regions with their addresses, several spaces side by side. |
-| `flow.py` | Box-and-arrow diagrams, for the toolchain and for what the hardware does when an interrupt fires. |
+| `flow.py` | Box-and-arrow diagrams, for the toolchain, for what the hardware does when an interrupt fires, and for the timer's block diagram. |
 | `core.py` | L01's figures: the register file, the three address spaces, an instruction encoded, the toolchain. |
 | `registers.py` | The bit-field figures, across every lecture that configures a peripheral. |
 | `ports.py` | L02's port figures: the four states of a pin, and the Arduino pin map. |
 | `circuit.py` | The two figures that are actually circuits, drawn with `schemdraw`: the LED and the button. |
 | `stack.py` | L02's call stack, byte by byte, across an `rcall` and its `ret`. |
-| `interrupt.py` | L03's interrupt sequence, step by step with the datasheet's cost beside each. |
+| `interrupt.py` | L03's interrupt sequence, step by step with the datasheet's cost beside each, and the torn sixteen-bit read. |
 | `vectors.py` | The 26-entry vector table, with the entries this course uses marked. |
-| `pointers.py` | L04's addressing modes: what each of the four forms reads, and where it leaves the pointer. |
+| `pointers.py` | L04's addressing modes: what each of the four forms reads, and where it leaves the pointer. Also the LED structure as seven bytes. |
 | `sram.py` | L04's SRAM map and the stack-depth figure. |
 | `timer.py` | L05's timer block diagram and its CTC waveform. |
-| `watchdog.py` | L06's watchdog registers, its timed write, and the sleep-mode table. |
-| `abi.py` | L06's register contract: the 32 registers coloured by their role in the calling convention. |
+| `watchdog.py` | L06's timed write sequence and the sleep-mode table. |
+| `abi.py` | The register contract L02 introduces and L06 relies on: the 32 registers coloured by their role in the calling convention. |
 | `build.py` | Figure name to figure plus output paths, and the command line. |
 
 ---
@@ -101,9 +101,9 @@ produces it, and the appendix should ask the reader to run it.
 * A figure declares the canvas it is drawn onto rather than being cropped to its contents, so
   figures read one after another line up rather than each being its own size.
 * Figures are written as palette PNGs (`style.PALETTE_COLORS`), not RGBA. Line art on white uses
-  a few hundred colors at most, so this costs nothing visually and roughly halves what gets
-  committed. Median cut is deterministic, so a rebuild stays byte-identical, which is what the CI
-  job depends on.
+  a few hundred colors at most, so this costs nothing visually and cuts what gets committed to
+  about two fifths. Median cut is deterministic, so a rebuild stays byte-identical, which is what
+  the CI job depends on.
 * A fill never carries meaning on its own. Every filled region is also labelled, so a reader
   printing a lecture in greyscale, or one who cannot separate these hues, loses nothing.
 * The figures are black on white, which is hard to read in GitHub's dark theme. If that ever

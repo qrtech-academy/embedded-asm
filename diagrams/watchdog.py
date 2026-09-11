@@ -83,7 +83,7 @@ TIMED_WRITE = style.Figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.6: what each sleep mode leaves running.
+# B.3: what each sleep mode leaves running.
 #
 # The datasheet gives this as a table of a dozen clock domains. This keeps the four that decide
 # whether a given program can use a given mode, which is the question a reader actually has.

@@ -1,15 +1,13 @@
-"""L05 figures: a timer as a block, as a waveform, and as the error it cannot avoid.
+"""L05 figures: a timer as a block, and as a waveform.
 
-The first two describe the hardware. The third is the one the lecture turns on: a timer counts
-whole ticks, so most frequencies you ask for are not available, and the figure is a picture of
-which ones are and how far off you land.
+Both describe the hardware. The error a timer cannot avoid, which is what the lecture turns on,
+is not drawn at all.
 
-The arithmetic at the top is here because the figures need the device's real numbers, and because
-it is the same arithmetic the reader writes in `avr::timer::Timer`. What it is deliberately *not*
-used for is a plot of the frequency error. That was drawn, and it came out an unreadable thicket:
-the error oscillates far too quickly against frequency to show as a curve, and every way of
-smoothing it into something legible also smoothed away the fact being taught. The material belongs
-in a table the reader generates with their own `best()`, which is where the appendix puts it.
+The arithmetic at the top is the same arithmetic the reader works by hand in Appendix B. What it
+is deliberately *not* used for is a plot of the frequency error. That was drawn, and it came out an
+unreadable thicket: the error oscillates far too quickly against frequency to show as a curve, and
+every way of smoothing it into something legible also smoothed away the fact being taught. The
+material belongs in a table the reader builds by hand, which is where the appendix puts it.
 """
 
 from __future__ import annotations
@@ -69,11 +67,12 @@ _BLOCK_EDGES = (
     flow.Edge(5, 6),
 )
 
-TIMER_BLOCK = flow.figure(
-    _BLOCK_NODES, _BLOCK_EDGES,
-    caption=("Everything above the handler happens in hardware, whether or not any code is",
-             "running. That is the whole argument for a timer over a counting loop: the counting",
-             "is not done by the processor, so the processor is free to be doing something else."))
+_BLOCK_CAPTION = (
+    "Everything above the handler happens in hardware, whether or not any code is",
+    "running. That is the whole argument for a timer over a counting loop: the counting",
+    "is not done by the processor, so the processor is free to be doing something else.")
+
+TIMER_BLOCK = flow.figure(_BLOCK_NODES, _BLOCK_EDGES, caption=_BLOCK_CAPTION)
 
 
 # ----------------------------------------------------------------------------------------

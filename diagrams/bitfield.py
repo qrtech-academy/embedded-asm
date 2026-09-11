@@ -6,7 +6,7 @@ figure here is a row of cells, MSB on the left, each cell carrying the datasheet
 that bit, with the register's own name to the left of the row and its address to the right.
 
 Several registers can share one figure, stacked, which is how a peripheral's control
-registers are shown together: TCCR1A above TCCR1B, or WDTCSR on its own.
+registers are shown together: TCCR1A above TCCR1B, or WDTCSR above MCUSR.
 
 Conventions:
 

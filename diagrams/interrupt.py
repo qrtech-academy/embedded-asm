@@ -5,11 +5,11 @@ bug that sequence causes: a sixteen-bit value read in two instructions, with an 
 between them.
 
 **The cycle figures in the sequence come from the ATmega328P datasheet, not from the simulator.**
-That is unusual in this course and it is deliberate. simavr reports a flat four cycles from the
-edge to the handler whatever instruction was interrupted and whenever the edge lands, which cannot
-be right: a real AVR has to finish the instruction it was already executing, and instructions take
-between one and four cycles. The simulator is exact about instruction costs, which is what every
-other measurement in this course relies on, and it is not modelling this. Saying so is better than
+That is unusual in this course and it is deliberate. simavr finishes the instruction it was
+executing before it takes an interrupt, as a real AVR does, but it then charges nothing for the
+push the datasheet says takes four cycles, so every interrupt it runs reaches the handler four
+cycles early. The simulator is exact about instruction costs, which is what every other
+measurement in this course relies on, and it is not modelling this. Saying so is better than
 publishing a number that happens to come out of a tool.
 """
 
@@ -67,8 +67,8 @@ def _draw_sequence(drawing, ax) -> None:
 
 
 _SEQUENCE_CAPTION = (
-    "Cycle counts from the ATmega328P datasheet, not measured: the simulator reports a flat four",
-    "cycles here and does not model the wait for the current instruction to finish.",
+    "Cycle counts from the ATmega328P datasheet, not measured: the simulator finishes the current",
+    "instruction as the device does, but charges nothing for the four-cycle push.",
     "So the shortest possible response is six cycles, and the longest is nine plus your handler.",
 )
 

@@ -94,7 +94,7 @@ PORT_STATES = style.Figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.4: Arduino pin numbers against port bits.
+# A.6: Arduino pin numbers against port bits.
 #
 # The mapping the LED driver has to perform, and the reason led_init takes a number from 0 to
 # 13 rather than a port and a bit. Fourteen cells in a row, because the numbering really is

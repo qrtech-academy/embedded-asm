@@ -2,7 +2,7 @@
 
 Only the shapes that more than one module needs: a filled cell, a brace over a run of cells,
 a measured span, and a callout arrow from a caption to the thing it captions. Anything used
-by a single figure module stays in that module, the way `waveform.py` keeps its own clock.
+by a single figure module stays in that module.
 
 Everything here takes canvas units and reads its colors from `style`.
 """

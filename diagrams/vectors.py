@@ -40,7 +40,8 @@ NAMES = (
 # Words per vector slot, which is what turns a vector number into an address.
 WORDS_PER_VECTOR = 2
 
-# The ones this course writes a handler for, and the one it starts from.
+# The ones this course writes a handler for or works an address out for, and the one it starts
+# from.
 USED = {"RESET", "PCINT0", "PCINT1", "PCINT2", "WDT", "TIMER1_COMPA"}
 
 CAPTION = (
@@ -78,7 +79,7 @@ def _draw(drawing, ax) -> None:
                 [low, low, 0.0, 0.0, low],
                 color=style.LINE_COLOR, lw=style.BOX_WIDTH, solid_joinstyle="miter", zorder=2)
 
-    style.text(ax, "Written in this course", (_RIGHT / 2, TITLE_GAP), valign="bottom",
+    style.text(ax, "Used in this course", (_RIGHT / 2, TITLE_GAP), valign="bottom",
                size=style.SMALL_SIZE, color=style.ACCENT_COLOR)
     style.caption(ax, CAPTION, _RIGHT / 2, _BOTTOM_ROW - CAPTION_DROP)
 

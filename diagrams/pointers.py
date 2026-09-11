@@ -12,7 +12,7 @@ import shapes
 import style
 
 # ----------------------------------------------------------------------------------------
-# A.3: the four ways to reach memory through a pointer.
+# A.2: the four ways to reach memory through a pointer.
 #
 # Four panels, one per mode, each a short strip of memory with the pointer before and after.
 # Panels rather than one strip with four annotations: the point is the comparison, and things
@@ -93,7 +93,7 @@ ADDRESSING_MODES = style.Figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.5: an LED structure, as the seven bytes it actually is.
+# B.1: an LED structure, as the seven bytes it actually is.
 #
 # The values are the ones led_init leaves for Arduino pin 13, read out of the simulator: the
 # three port register addresses of port B, low byte first, and the bit number.

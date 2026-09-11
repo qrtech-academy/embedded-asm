@@ -13,7 +13,7 @@ import shapes
 import style
 
 # ----------------------------------------------------------------------------------------
-# A.6: the map, with the one address that is not memory at all.
+# B.4: the map, with the one address that is not memory at all.
 # ----------------------------------------------------------------------------------------
 _MAP_W = 9.2
 _ADDRESS_GAP = 0.35
@@ -92,10 +92,11 @@ SRAM_MAP = style.Figure(
 
 
 # ----------------------------------------------------------------------------------------
-# A.7: how deep the stack gets, one frame at a time.
+# C.2: how deep the stack gets, one frame at a time.
 #
-# The worst case of L03's program: the main loop is two calls deep when an interrupt lands, and
-# the handler is two more. Every number here is bytes, and all of them were measured.
+# The worst case of L03's program: the main loop calls nothing, so the depth is all the
+# interrupt's: the program counter, the handler's nine saves, and two calls inside it. Every number
+# here is bytes, and all of them were measured.
 # ----------------------------------------------------------------------------------------
 _STEP_H = 0.95
 _STEP_W = 11.0
@@ -104,14 +105,15 @@ _BAR_GAP = 0.6
 
 # (what happened, bytes this adds, running total)
 _FRAMES = (
-    ("the main loop, before anything", 0, 0),
-    ("rcall led_toggle", 2, 2),
-    ("rcall shift_bits, from inside it", 2, 4),
-    ("an interrupt lands: the PC is pushed", 2, 6),
-    ("the handler saves r24, r25, r18, r19 and SREG", 5, 11),
-    ("rcall button_pressed", 2, 13),
+    ("the main loop, which calls nothing", 0, 0),
+    ("an interrupt lands: the PC is pushed", 2, 2),
+    ("the handler saves eight registers and SREG", 9, 11),
+    ("rcall btn_pressed", 2, 13),
     ("rcall shift_bits, from inside that", 2, 15),
 )
+
+# How many of those rows are the main program's; the rest are the interrupt's.
+_MAIN_ROWS = 1
 
 _DEPTH_CAPTION = (
     "Fifteen bytes at the deepest. The lowest byte used is 0x08F1, and the stack pointer ends at",
@@ -130,13 +132,13 @@ def _draw_depth(drawing, ax) -> None:
 
         if total > 0:
             shapes.cell(ax, 0.0, low + 0.12, total * _BYTE_SCALE, _STEP_H - 0.24,
-                        "accent" if index >= 3 else "accent2")
+                        "accent" if index >= _MAIN_ROWS else "accent2")
         style.text(ax, f"{total} bytes" + (f"  (+{added})" if added else ""),
                    (total * _BYTE_SCALE + 0.3, low + _STEP_H / 2), halign="left",
                    size=style.TINY_SIZE, color=style.MUTED_COLOR)
 
     # Where the two halves divide: everything from the interrupt down is the handler's.
-    divider = -3 * _STEP_H
+    divider = -_MAIN_ROWS * _STEP_H
     ax.plot([-_BAR_GAP - _LABEL_W, _RIGHT_EDGE], [divider, divider],
             color=style.MUTED_COLOR, lw=1.2, linestyle=(0, (4, 3)), zorder=0)
 

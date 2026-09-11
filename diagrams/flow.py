@@ -1,9 +1,10 @@
 """Box-and-arrow diagrams: what turns into what, and in which order.
 
-Two quite different things are drawn with the same shapes, and that is deliberate. L01 uses
+Three quite different things are drawn with the same shapes, and that is deliberate. L01 uses
 this for the toolchain, where the boxes are files and programs and the arrows are "produces".
 L03 uses it for what the hardware does when an interrupt fires, where the boxes are steps and
-the arrows are "then". A reader who has learned to read one reads the other for free.
+the arrows are "then", and L05 for the timer's block diagram. A reader who has learned to read
+one reads the others for free.
 
 Nodes are placed by hand at explicit centres rather than laid out automatically. These
 diagrams are small, they are read in a fixed order, and where a box sits carries meaning:

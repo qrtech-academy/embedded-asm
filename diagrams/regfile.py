@@ -1,11 +1,10 @@
 """The AVR register file, drawn as its 32 registers.
 
-One figure shape, reused by four lectures, because the same 32 cells answer four different
+One figure shape, reused by three lectures, because the same 32 cells answer three different
 questions and the reader should recognize the picture each time:
 
 * L01 asks which registers `ldi` can reach, and which pairs are the pointer registers.
 * L02 asks which registers a subroutine may clobber and which it must give back.
-* L04 asks the same about X, Y and Z, now that they are being used as pointers.
 * L06 asks where the C compiler puts arguments and return values.
 
 Laid out as two columns of sixteen, r0 to r15 on the left and r16 to r31 on the right. That

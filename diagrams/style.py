@@ -91,7 +91,7 @@ INCHES_PER_UNIT = 0.5
 DPI = 130  # 12.6 x 4.0 units at 0.5 in/unit and 130 dpi = 819 x 260 px.
 
 # Line art on white uses a few hundred colors at most, so a palette beats 32-bit RGBA: a
-# third of the file size, and lossless for a figure already inside 256 colors.
+# about two fifths of the file size, and lossless for a figure already inside 256 colors.
 PALETTE_COLORS = 256
 
 # A figure builder: adds elements to the drawing, and may use the raw matplotlib axes for

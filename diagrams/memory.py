@@ -11,8 +11,7 @@ following habit: the reader will have it open beside this figure.
 
 **Not drawn to scale, ever.** The data space runs from a 32-byte register file to a 2048-byte
 SRAM, a factor of 64, and a faithful drawing would make the registers a hairline. Region
-heights are set by how much there is to say about a region, and every figure built here says
-so in as many words.
+heights are set by how much there is to say about a region.
 """
 
 from __future__ import annotations
