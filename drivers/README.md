@@ -64,8 +64,8 @@ were assembled in.
 
 Three conventions the whole library follows, and the tests assume:
 
-* **Every label is global**, because avra makes them so. There is no `.global` directive in this
-  course and nothing needs one.
+* **Every label is global**, because avra makes them so. There is no `.global` directive in any
+  `.asm` file and nothing needs one.
 * **Start each file with `.include "m328Pdef.inc"`.** The generated unit includes it too, and the
   device file guards itself against being included twice, so the line costs nothing here and is
   what makes the file stand alone in Studio.

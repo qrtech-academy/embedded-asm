@@ -1,5 +1,5 @@
 /**
- * @file The driver structures, as the C++ side sees them.
+ * @file The driver structures' field offsets and sizes, as the C++ side sees them.
  */
 #pragma once
 

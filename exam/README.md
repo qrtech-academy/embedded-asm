@@ -11,8 +11,8 @@ far you have read than about what you have understood.
 
 What they check is different from what the exercises check. The exercises are done with a
 datasheet open, an assembler to hand, and a test suite that tells you when you are wrong. These
-are done with none of those: assembly written out by hand, cycle counts from memory, and at least
-one routine per paper that assembles cleanly and is wrong anyway.
+are done with none of those: assembly written out by hand, cycle counts worked out on paper, and
+at least one routine per paper that assembles cleanly and is wrong anyway.
 
 ---
 

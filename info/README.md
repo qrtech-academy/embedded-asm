@@ -23,8 +23,8 @@ written x86 or ARM assembly, L01 will be short work and the rest will not be: th
 16-bit-pointer-in-three-register-pairs arrangement, its separate program and data address spaces,
 and its I/O register window are all different enough to be worth reading rather than skimming.
 
-The course writes AVRASM2 throughout, which is the syntax Microchip Studio assembles, and never
-GNU `as`. Nothing is assumed about either.
+The course writes AVRASM2, which is the syntax Microchip Studio assembles, and writes GNU `as`
+only where it has to. Nothing is assumed about either.
 [L01 Appendix B.7](../lectures/L01/appendix/b_toolchain.md#b7-opening-this-course-in-microchip-studio)
 is for readers who want Studio open beside the course, and
 [L06 Appendix C.3](../lectures/L06/appendix/c_c_abi.md#c3-calling-your-assembly-from-c) is where the
@@ -158,21 +158,21 @@ sudo apt -y install gcc-avr avr-libc                   # L06 only
   source file from this course opens and single-steps there unchanged.
 * **[binutils-avr](https://gcc.gnu.org/wiki/avr-gcc)** - Needed from **L01**, for `avr-objdump`
   alone. Disassembling your own hex and reading it against what you typed is core L01 material and
-  one of its exercises, and the assembler's output is what you disassemble
+  one of its exercises, and the assembler's output is what you disassemble.
 * **[avr-gcc, avr-libc](https://gcc.gnu.org/wiki/avr-gcc)** - The GNU AVR compiler, needed by
   **L06 alone**, where a C program calls your assembly and the two are linked together. Nothing in
-  the first five lectures uses either
+  the first five lectures uses either.
 * **[simavr](https://github.com/buserror/simavr)** - Free, open-source AVR simulator. The test
   suites do not run the `simavr` command; they link against `libsimavr` and drive the core
   directly, which is what lets a test call one of your subroutines and inspect the machine
-  afterwards. `libsimavr-dev` is therefore required, not optional
+  afterwards. `libsimavr-dev` is therefore required, not optional.
 * **libelf-dev** - Not this course's dependency but the harness's: it links `-lelf` to read an
   ELF's symbol table. Usually already installed, never installed on a clean machine, and its
-  absence appears as `cannot find -lelf` from the linker rather than as anything about AVR
+  absence appears as `cannot find -lelf` from the linker rather than as anything about AVR.
 * **[clang-format](https://clang.llvm.org/docs/ClangFormat.html)** - Formats every C and C++
   source in the repository, the device headers and L06's capstone alike, against the
   `.clang-format` at the repository root. The assembly gets a lighter pass: trailing whitespace
-  and hard tabs only
+  and hard tabs only.
 
 **Optional, for watching a real LED**: an **Arduino Uno** (or any ATmega328P board) and
 `avrdude`, which is a separate package the lists above deliberately leave out:
@@ -181,7 +181,7 @@ sudo apt -y install gcc-avr avr-libc                   # L06 only
 sudo apt -y install avrdude
 ```
 
-Flashing is covered in an appendix to L02, the lecture where an LED first lights up. No exercise
+Flashing is covered in an appendix to L02, the lecture that writes the LED driver. No exercise
 in this course requires it, and no test suite knows whether you own a board.
 
 **Not needed**: Microchip Studio, Atmel Studio, the Arduino IDE, or Windows.
