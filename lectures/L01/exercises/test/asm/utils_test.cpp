@@ -49,8 +49,8 @@ struct Outcome
 /**
  * @brief The library assembles, loads, and defines both subroutines.
  *
- *        Checked first and on its own, so that a missing .global reads as a missing .global
- *        rather than as sixteen failures about wrong return values.
+ *        Checked first and on its own, so that a misspelt label or a file that did not assemble
+ *        reads as exactly that rather than as sixteen failures about wrong return values.
  */
 TEST(Utils, SubroutinesAreDefined)
 {
@@ -133,8 +133,8 @@ TEST(Utils, ShiftBitsIsRepeatable)
  *        then a final cp with the breq taken, then a mov and a ret.
  *
  *        So a different routine that returns all the right values will fail here, and that is
- *        deliberate: the cross-check exercise asks you to predict this number by hand and with
- *        your own toolkit before you ever run it, and a test that accepted any cost would have
+ *        deliberate: the cross-check exercise asks you to predict this number by hand before
+ *        you ever run it, and a test that accepted any cost would have
  *        nothing to say about whether your prediction was right. If you deliberately rewrite
  *        the routine, this is the number to update, and updating it is a decision rather than
  *        an accident.

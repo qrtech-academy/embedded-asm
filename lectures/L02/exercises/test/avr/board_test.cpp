@@ -8,8 +8,8 @@
  *
  *        What it checks is the translation this lecture is built around: that Arduino pin 13
  *        really is bit 5 of port B, and that the register addresses which follow from that are
- *        the ones the datasheet gives. Your pin map and your assembly both have to agree with
- *        these, and if this file fails then neither of them can be right.
+ *        the ones the datasheet gives. Your assembly has to agree with these, and if this file
+ *        fails then it cannot be right either.
  */
 #include <cstdint>
 

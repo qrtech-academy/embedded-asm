@@ -14,7 +14,7 @@ make clean      # remove the binary
 | File | Runs when | Tests |
 |---|---|---|
 | L01 to L04's files | see each lecture's README | the pinned constants and the drivers |
-| `avr/timer_data_test.cpp` | **always** | The prescalers, counter widths and registers |
+| `avr/timer_data_test.cpp` | **always** | The prescalers, counter widths, registers, and the timer structure's layout |
 | `asm/timer_driver_test.cpp` | `drivers/source/timer.asm` exists | The software timer, in the simulator |
 
 `timer_data_test.cpp` is this suite's always-on file. It checks the device facts every frequency
@@ -32,9 +32,9 @@ the three before it return 0. Comparing before incrementing rather than after gi
 fast at that target and 0.1% fast at a target of 1000, and neither announces itself.
 
 **`CountsPastTwoHundredAndFiftyFive`** is the only test that catches a driver comparing just the
-low bytes of the count and the target. Every other test uses a target of 10 or less, where the
-high bytes are both zero and comparing them adds nothing. A target of 300 is in the suite for
-exactly this reason.
+low bytes of the count and the target. Every other test that calls `timer_tick` uses a target of
+10 or less, where the high bytes are both zero and comparing them adds nothing. A target of 300 is
+in the suite for exactly this reason.
 
 ---
 

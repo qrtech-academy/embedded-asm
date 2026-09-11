@@ -13,13 +13,13 @@ Four unrelated things use it and none of them coordinates with the others:
 
 **`SP` points at the next free byte, not the last used one.** So the number of bytes in use is
 `RAMEND - SP`, and the lowest byte actually occupied is one *above* where `SP` is. That
-off-by-one is worth getting right once: it is the difference between "my structure at `0x08F1` is
-safe" and "my structure at `0x08F1` was overwritten".
+off-by-one is worth getting right once: with `SP` down at `0x08F0`, it is the difference between
+"my structure at `0x08F0` is safe" and "my structure at `0x08F0` was overwritten".
 
 ---
 
 ## C.2 Counting the worst case
-![Seven rows showing stack use accumulating: nothing in the main loop, two bytes for a call, four for a nested call, six when an interrupt pushes the program counter, eleven after the handler saves five registers, thirteen and fifteen for two more nested calls](./images/stack_depth.png)
+![Five rows showing stack use accumulating: nothing in the main loop, which calls nothing, two bytes when an interrupt pushes the program counter, eleven after the handler saves eight registers and SREG, thirteen and fifteen for the two nested calls inside it](./images/stack_depth.png)
 
 That is L03's program at its deepest, and every number in it is measured. The rule behind them is
 simple enough to apply to any program:
@@ -72,8 +72,9 @@ in this course, and both appear in real AVR code.
 2048 bytes sounds like a lot until you write the subtraction down.
 
 L03's program uses 15 bytes of stack at its worst and 17 bytes of structures, one LED and one
-button, which leaves 2016 free. An array of six LEDs adds 42 bytes of structures and one more call
-level, so the figures move to 17 and 59, leaving 1972. Neither is close to trouble, and that is
+button, which leaves 2016 free. An array of six LEDs adds 42 bytes of structures, and a main loop
+that walks it goes three calls deep, `led_array_all_on` into `led_on` into `shift_bits`, so the
+figures move to 21 and 59, leaving 1968. Neither is close to trouble, and that is
 the point of computing it: you want to know *how much* headroom you have, so that when a later
 change halves it you notice.
 
@@ -122,7 +123,8 @@ the safe order costs nothing, so the rule is worth following rather than reasoni
 them with `lds` and `sts` works too and costs a cycle more each.
 
 **What this is for.** Nothing in this course needs it: the drivers you are writing never move `SP`,
-and the depth figures in C.2 are computed rather than read out of the machine. It is here because
+and the depth figures in C.2 come from the harness watching `SP` from outside rather than from
+your program reading it. It is here because
 of what the four instructions above become when you write them in the other order. Save every
 register on the stack you are on, store `SP` somewhere, load `SP` from somewhere else, restore
 every register from *that* stack, and `ret`, and you have returned onto a stack you were not

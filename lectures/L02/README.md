@@ -84,8 +84,8 @@ The second is this lecture's cross-check, and the answer is no.
 * [Appendix D](./appendix/d_hardware.md): flashing a real Arduino Uno. Entirely optional.
 * [Appendix E](./appendix/e_exercises.md): the exercises.
 * Appendix F: the worked solutions, published after the lecture rather than with it.
-* [L01 Appendix D](../L01/appendix/d_first_subroutine.md) for `shift_bits`, which every
-  subroutine in this lecture calls.
+* [L01 Appendix D](../L01/appendix/d_first_subroutine.md) for `shift_bits` and
+  `shift_bits_inverted`, which the LED driver is built on.
 
 ---
 

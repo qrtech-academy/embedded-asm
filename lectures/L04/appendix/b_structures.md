@@ -14,10 +14,10 @@ worth saying out loud, because in C the compiler would say them for you:
 not memory at all, and the driver will store through it without complaint
 ([B.4](#b4-where-a-structure-may-live)).
 
-**The offsets are the interface.** They are declared once, in
-[`drivers/include/led.inc`](../../../drivers/include/led.inc), and both your driver and the test
-suite read them from there. A structure whose fields are in different places is a different
-structure, however similar the code looks.
+**The offsets are the interface.** They are declared in
+[`drivers/include/led.inc`](../../../drivers/include/led.inc) for your driver, and copied into
+`device/include/avr/drivers.hpp` for the test suite. A structure whose fields are in different
+places is a different structure, however similar the code looks.
 
 **Every field is one instruction away.** All four offsets are below 63, so `ldd` and `std` reach
 any of them directly ([A.3](./a_pointers.md#a3-displacement-and-its-two-limits)). That is the
@@ -86,14 +86,17 @@ addresses that a store instruction will accept and that are not memory you may u
 | `0x0020` to `0x005F` | the I/O registers | reconfigures the hardware |
 | `0x0060` to `0x00FF` | extended I/O | the same |
 | `0x0100` to `0x08FF` | SRAM | what you wanted |
-| `0x0900` upwards | **nothing** | goes nowhere; a load reads nothing back |
+| `0x0900` upwards | **nothing** | reaches no memory; nothing reliable reads back |
 
-**`RAMEND + 1` is the one to know about.** It is `0x0900`, it looks like the obvious place to
-start putting things, and a good deal of published AVR code allocates driver structures there,
-including the material this course is based on. On a device with external RAM it *is* where that
-RAM begins. On an ATmega328P on an Arduino Uno there is no external RAM, so it is nothing at all:
-the stores succeed, the loads return nothing, and the driver behaves as though every structure
-were full of zeros.
+**`RAMEND + 1` is the one to know about.** It is `0x0900`, it looks like the obvious place to start
+putting things, and a good deal of published AVR code allocates driver structures there, including
+the material this course is based on. On a device with external RAM it *is* where that RAM begins.
+On an ATmega328P on an Arduino Uno there is no external RAM, so it is nothing at all: the stores are
+accepted and reach no memory, the datasheet does not say what a load from there returns, and the
+driver ends up working from values it never wrote. On a part that reads them back as zeros, that
+looks as though every structure were full of zeros. The simulator is stricter than the chip here:
+simavr stops the program at the first access above `RAMEND` and reports an invalid address, so under
+the test suite this mistake is loud rather than quiet.
 
 The right answer is to let the assembler place them. AVRASM2 has a data segment for exactly this:
 `.dseg` switches to it, `label: .byte n` reserves `n` bytes and gives you the address the assembler

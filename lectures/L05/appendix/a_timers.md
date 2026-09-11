@@ -1,7 +1,7 @@
 # Appendix A - Timers
 
 ## A.1 What is wrong with counting
-L02 ended with an LED toggling about 127,000 times a second, because nothing was slowing it down
+L02 ended with an LED blinking about 127,000 times a second, because nothing was slowing it down
 (L02 F.9, exercise 9). The obvious fix is a
 loop that counts to a large number and does nothing, and it works.
 
@@ -72,7 +72,7 @@ ticks you end up with jumps around.
 because it is the timer meant to be driven from a watch crystal and needs the extra steps to reach
 a second from 32.768 kHz. Nothing in this course uses Timer2, and mixing its ladder into any
 calculation below would give a wrong answer that still looks plausible, which is why
-`atmega328p.hpp` pins the five and says in its comment which timers they belong to.
+`atmega328p.hpp` pins the five and no others.
 
 **A prescaler is a loss of resolution, not just a change of range.** At a prescaler of 64 the
 counter advances once every 64 cycles, so the finest period you can express is 64 cycles. Every
@@ -96,10 +96,12 @@ Writing the tick count itself instead of one less gives a period one tick too lo
 which is 0.4% at 250 ticks and invisible at 16000. It is the single most common mistake in timer
 setup and it produces a clock that is slightly slow rather than obviously broken.
 
-**The period does not drift.** The hardware clears the counter, so nothing accumulates. A
-software delay of a million cycles that is one cycle out is one cycle out every time and an hour
-later you are seconds behind; a CTC period that is exactly `N × (OCR1A + 1)` stays exactly that,
-for as long as the power is on.
+**The period does not drift.** The hardware restarts the count at the match, not when your
+handler gets round to running, so a handler that starts late makes that one event late and nothing
+more. A software delay has no such anchor: every cycle it runs long, and every interrupt that lands
+in it, is added to every period after it. A CTC period that is exactly `N × (OCR1A + 1)` stays
+exactly that for as long as the power is on, which is also why the previous paragraph matters: an
+`OCR1A` that is one out is one tick out in every period, and that does accumulate.
 
 The alternative, **normal mode**, lets the counter run to its maximum and wrap, interrupting on
 overflow. The period is then fixed by the counter's width and the prescaler, and the only thing
@@ -111,7 +113,7 @@ to on a timer with no compare register.
 ## A.5 The registers
 ![TCCR1A, TCCR1B and TIMSK1 drawn as their bits, with WGM12 marked as the CTC mode bit and CS12 to CS10 as the prescaler and the on switch, and OCIE1A as the interrupt enable](./images/timer_registers.png)
 
-Four registers, and one caution.
+Four registers, and three cautions.
 
 | Register | Address | What you put in it |
 |---|---|---|

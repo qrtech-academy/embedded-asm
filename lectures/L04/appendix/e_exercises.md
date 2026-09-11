@@ -1,6 +1,6 @@
 # Appendix E - Exercises
 
-> **How to check your work.** Exercises 5 and 6 are checked by this lecture's test suite: write
+> **How to check your work.** Exercise 5 is checked by this lecture's test suite: write
 > the file at the path the specification gives, then run `make test`. The suite is cumulative and
 > runs L01 to L03's tests too. See [the suite's README](../exercises/test/README.md).
 >
@@ -108,7 +108,7 @@ Write `drivers/source/led_array.asm` to the specification in
 **c)** Change your stride from `LED_SIZE` to 6, rebuild, and note which tests fail and which still
 pass. Then put it back.
 
-**d)** Move the count test in one of the walks from the top of the loop to the bottom, rebuild,
+**d)** Move the count test in `led_array_init` from the top of the loop to the bottom, rebuild,
 and note which single test catches it. Explain why no other test could.
 
 ---
@@ -140,8 +140,8 @@ Use the rule in [C.2](./c_stack.md#c2-counting-the-worst-case).
 **a)** A program with no interrupts, whose deepest path is a main loop calling a driver which
 calls `shift_bits`. How many bytes of stack?
 
-**b)** L03's program: the same main loop, plus an interrupt whose handler saves five registers
-and calls `btn_pressed`, which itself calls `shift_bits`. How many bytes?
+**b)** L03's program: a main loop that calls nothing, and an interrupt whose handler saves eight
+registers and SREG and calls `btn_pressed`, which itself calls `shift_bits`. How many bytes?
 
 **c)** Where does the stack pointer end up, and what is the lowest byte actually occupied? These
 are not the same number.
@@ -157,7 +157,7 @@ comparison.
 ---
 
 ## 8. Cross-check: how deep the stack really goes
-**Cross-check.** *Compute it by hand, compute it with your own code, measure it, reconcile.*
+**Cross-check.** *Compute it by hand, measure it, reconcile.*
 
 **a) By hand.** Your answer to exercise 7(b).
 
@@ -173,8 +173,8 @@ make measure IMAGE=app CALLS="--run 4000 --drive B4=0 --run 300 --drive B4=1 --r
 `--run` lets the program run on its own, which is the only way to reach a handler: an interrupt
 cannot be called, it has to arrive. The last line reports how far down the stack pointer went.
 
-**d) Reconcile.** The byte count should agree with (a) and (b). The stack pointer's own value will
-be one below the lowest byte you computed, and that is not a disagreement; say why.
+**d) Reconcile.** The byte count should agree with (a). The stack pointer's own value will be one
+below the lowest byte you computed in (b), and that is not a disagreement; say why.
 
 **e) Now run it without pressing anything.**
 
@@ -208,8 +208,8 @@ and a wrong stride.
 **c)** The test suite catches both. Say what a test has to do that a program does not, in order to
 notice.
 
-**d)** A structure at `0x08F8` and a stack that reaches 15 bytes down. Nothing fails for a week,
-and then it does. Give a plausible account of what changed.
+**d)** A structure that ends at `0x08F0` and a stack that reaches 15 bytes down. Nothing fails
+for a week, and then it does. Give a plausible account of what changed.
 
 **e)** Name one thing you could add to the *program* that would make a stack overflow noticeable
 rather than silent, and say what it would cost.

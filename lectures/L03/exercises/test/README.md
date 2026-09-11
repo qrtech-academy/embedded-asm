@@ -35,11 +35,12 @@ It is caught here, but it *surfaces* in `Btn.ToggleAlternates`, because a toggle
 inverted answer stops toggling and starts latching. A failure two steps from its cause is the
 expensive kind, which is why both tests exist rather than just the first.
 
-**`Btn.DisablingOneButtonLeavesAnother`** catches a `btn_disable_interrupt` that shifts by
-the wrong field of the structure. Reading offset 0, the pin register pointer, where offset 9, the
-pin number, belongs gives a shift count of `0x23`; that produces a mask of zero, which clears
-nothing at all. With one button, "nothing happened" and "the right thing happened" are
-indistinguishable from outside, so the test needs two.
+**`Btn.DisablingOneButtonLeavesAnother`** catches a `btn_disable_interrupt` that writes the mask
+register instead of clearing one bit of it. With one button, clearing the whole register and
+clearing only that button's bit are indistinguishable from outside, so the test needs two. A
+disable that shifts by the wrong field of the structure, offset 0 where offset 9 belongs, is caught
+sooner: its mask is zero, it clears nothing, and `Btn.DisableClearsOnlyTheMaskBit` sees the bit
+still set.
 
 ---
 

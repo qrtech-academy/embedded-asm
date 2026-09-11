@@ -43,8 +43,8 @@ You will check both, and one of them is the subject of this lecture's cross-chec
 ---
 
 ## After the lecture
-* Read [Appendix C](./appendix/c_counting_cycles.md) and
-  [Appendix D](./appendix/d_first_subroutine.md), which specify what you are asked to write.
+* Read [Appendix C](./appendix/c_counting_cycles.md), on counting cycles by hand, and
+  [Appendix D](./appendix/d_first_subroutine.md), which specifies what you are asked to write.
 * Work through [Appendix E](./appendix/e_exercises.md). Solutions will be published after the
   lecture.
 
@@ -89,10 +89,10 @@ You will check both, and one of them is the subject of this lecture's cross-chec
 
 ## Reference
 * [Appendix A](./appendix/a_avr_core.md): the machine.
-* [Appendix B](./appendix/b_toolchain.md): the tools, including the AVRASM2 mapping if you are
-  arriving from Microchip Studio.
+* [Appendix B](./appendix/b_toolchain.md): the tools, including how to open this course in
+  Microchip Studio.
 * [Appendix C](./appendix/c_counting_cycles.md): cycle counting on paper.
-* [Appendix D](./appendix/d_first_subroutine.md): the `utils.asm` specification.
+* [Appendix D](./appendix/d_first_subroutine.md): the `utils.asm` and `main.asm` specification.
 * [Appendix E](./appendix/e_exercises.md): the exercises.
 * The two primary documents. Every number this lecture quotes comes from one of them, and the
   appendix says which:

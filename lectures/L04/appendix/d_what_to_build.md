@@ -2,11 +2,12 @@
 
 ## D.1 The task
 Write `drivers/source/led_array.asm`, four subroutines that treat a run of LED structures as one
-thing; and write `avr::memory::Layout`, the class that answers where a structure may live and how
-far down the stack will reach.
+thing.
 
-Neither is large. What they are for is the two skills this lecture is about: walking memory at a
-stride that is not one, and knowing in advance that two things sharing 2048 bytes will not meet.
+It is not large. What it is for is the first of the two skills this lecture is about, walking
+memory at a stride that is not one. The second, knowing in advance that two things sharing 2048
+bytes will not meet, is arithmetic you do on paper ([Appendix C](./c_stack.md)) and then check in
+the simulator ([Appendix E](./e_exercises.md)).
 
 Creating `drivers/source/led_array.asm` is all it takes to switch its tests on.
 

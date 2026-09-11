@@ -98,7 +98,8 @@ So changing `WDE` or the timeout takes two writes:
 2. Within **four cycles**, write the value you actually want, with `WDCE` clear.
 
 Four cycles, not four instructions. Two consecutive `sts` instructions are two cycles each, so
-they fit with room to spare; almost anything between them does not.
+they fit with one cycle to spare: a single `nop` between them still works, and anything longer does
+not.
 
 **This is why the sequence starts with `cli`.** An interrupt landing between the two writes takes
 at least six cycles to reach your handler and then runs the whole thing
@@ -114,13 +115,14 @@ switch the watchdog off after a watchdog reset, which is precisely when you most
 
 ### What a failed sequence leaves behind
 If the second write misses its window, the hardware ignores it. `WDCE` clears itself after four
-cycles, and what remains is the value from the *first* write: `WDE` set, with the timeout selector
-at zero.
+cycles, and what remains is whatever the *first* write was allowed to change on its own: `WDE` is
+set, because setting it never needs the window, and the timeout selector is where it was, because
+changing it does. On a device fresh from reset the selector is zero, so the register holds `0x08`.
 
 That is system reset mode with the shortest timeout. **A sequence that is merely slightly too slow
-does not fail safe; it fails into the most aggressive setting the register has.** The simulator
-models this exactly, and the test suite checks for it: if
-`WatchdogDriver.InitWritesTheByteAsked` ever reports `WDTCSR` holding `0x08`, that is what
+does not fail safe; it fails into system reset mode, and from reset into the most aggressive
+setting the register has.** The simulator models this exactly, and the test suite checks for it:
+if `WatchdogDriver.InitWritesTheByteAsked` ever reports `WDTCSR` holding `0x08`, that is what
 happened.
 
 ---
@@ -136,9 +138,9 @@ does not have a watchdog at all, because now you are debugging the watchdog as w
 **Too long** and a program that has stopped stays stopped for that long. Eight seconds is a long
 time for a machine to be doing nothing.
 
-The rule is: **the shortest timeout that comfortably exceeds your worst-case loop time**, and
-`covering()` is the method that applies it. Worst case, not typical: the iteration that reads a
-sensor, and handles two interrupts, and takes the slow branch.
+The rule is: **the shortest timeout that comfortably exceeds your worst-case loop time**. Worst
+case, not typical: the iteration that reads a sensor, and handles two interrupts, and takes the
+slow branch.
 
 **And the timeouts are nominal.** They come from an internal oscillator that runs at roughly
 128 kHz and varies with supply voltage and temperature. The datasheet's "1.0 s" and the "1024 ms"

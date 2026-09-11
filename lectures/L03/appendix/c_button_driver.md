@@ -1,8 +1,7 @@
 # Appendix C - The Button Driver
 
 ## C.1 The task
-Write `drivers/source/btn.asm`, extend `drivers/app/main.asm` with a handler, and write
-`avr::interrupt::Vectors`.
+Write `drivers/source/btn.asm`, and extend `drivers/app/main.asm` with a handler.
 
 The button driver is the LED driver's mirror image for its first half and something new for its
 second. Both are handed an Arduino pin number and build a structure of register addresses; where
@@ -137,13 +136,14 @@ latching, which is a symptom two steps removed from its cause.
 
 **`btn_disable_interrupt` shifts by the pin number**, field at offset 9, not by anything at
 offset 0. Reaching for the wrong field gives a shift count of `0x23`, which produces a mask of
-zero, which clears nothing; with one button, "nothing happened" and "the right thing happened"
-look identical from outside. The test with two buttons is the one that can tell.
+zero, which clears nothing, so a button you disabled stays enabled. And clear that bit alone: a
+second button on the same port has its own bit in the same mask register, and the test with two
+buttons is the one that checks it survives.
 
 **Preserve the structure pointer across the nested call in `toggle`.** `btn_interrupt_enabled`
 sets `Z` to the same value `toggle` had, so `Z` survives by coincidence, and relying on that is a
-decision rather than a fact about the contract. Pushing `r25:r24` and popping them after is two
-instructions and four cycles and needs no footnote. Then jump to the enable or disable subroutine
+decision rather than a fact about the contract. Pushing `r25:r24` and popping them after is four
+instructions and eight cycles and needs no footnote. Then jump to the enable or disable subroutine
 with `rjmp` rather than calling it: it is the last thing you do, so its `ret` can be yours.
 
 ---
@@ -159,35 +159,44 @@ address and lands you in the watchdog's slot.
 
 **A handler** that saves what it uses, asks the button whether it is pressed, toggles the LED if
 it is, restores, and executes `reti`. Its shape is the prologue and epilogue from
-[B.2](./b_isr_contract.md#b2-sreg-first-and-sreg-last), with three instructions in the middle.
-**Call it `isr_pcint0`**, exactly, because two things outside your program
-look for it by that name: the measurement command in [Appendix D](./d_exercises.md), and the test
+[B.2](./b_isr_contract.md#b2-sreg-first-and-sreg-last), with a handful of instructions in the
+middle. **Call it `isr_pcint0`**, exactly, because two things outside your program look for it by
+that name: the measurement command in [Appendix D](./d_exercises.md), and the test
 suite.
 
 **Setup** that initialises the LED on pin 13 and the button on pin 12, enables the button's
 interrupt, and then runs `sei` **once**, after everything else. Then a main loop that does nothing.
 
 ### Pinned details
-**Save `r24`, `r25`, `r18` and `r19` as well as SREG: five things.** The handler passes a pointer
-in `r25:r24` and calls subroutines that clobber both, plus `r18` and `r19` inside `shift_bits`.
-Every one of those has to be saved, because the interrupted code agreed to nothing. Saving three
-and leaving `r18` and `r19` is the mistake that costs you eight cycles less and a bug that appears
-only when the main loop happens to be using them.
+**Save `r24`, `r25`, `r18`, `r19`, `X` and `Z` as well as SREG: nine things.** The handler
+passes a pointer in `r25:r24` and calls subroutines that clobber both, plus `r18` and `r19` inside
+`shift_bits`, plus `Z`, which `btn_pressed` and `led_toggle` load with their structure, and `X`,
+which they load with a port register's address. Every one of those has to be saved, because the
+interrupted code agreed to nothing. Leaving out the four you never name yourself is the mistake
+that costs sixteen cycles less and a bug that appears only when the main loop happens to be using
+a pointer.
+
+That list is built from what these drivers actually do, which is a decision
+([L02 B.4](../../L02/appendix/b_subroutines.md#b4-calling-a-subroutine-from-a-subroutine)). The
+contract would let them clobber `r20` to `r23` as well, and a handler that calls code you did not
+write has to save those too.
 
 **The LED and the button must be on different pins.** Putting both on 13 means `btn_init` makes
 the pin an input after `led_init` made it an output, and the LED stops working in a way that looks
 like the handler never runs.
 
-**`sei` goes last, in setup, once.** Not in the driver, and not before the structures are built:
-an interrupt arriving before `btn_init` has finished would run your handler against a structure
-that is half zeros.
+**`sei` goes last, in setup, once.** Not in the driver, and not before the structures are built.
+With `sei` last nothing can interrupt setup, so the order of everything before it stops mattering.
+With it first, setup is safe only while no interrupt source is switched on before the structure its
+handler reads, and one that arrives early runs your handler against a structure that is half
+zeros.
 
 **This is the only part of the course a unit test cannot reach.** Everything else you have written
 is a subroutine, and a test can call a subroutine; an interrupt has to arrive. So the suite's
 `app_test.cpp` loads the whole program, runs it, and changes the pin from outside, which is the
 only way to find out whether the vector entry points at your handler, whether `sei` ran, and
 whether the handler ends with `reti`. It checks no cycle counts: what your handler costs depends
-on what your handler saves, and measuring that is exercise 6's job rather than the suite's.
+on what your handler saves, and measuring that is exercise 8's job rather than the suite's.
 
 ---
 

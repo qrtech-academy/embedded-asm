@@ -20,7 +20,7 @@ each decides for itself whether it applies.
 | File | Runs when | Tests |
 |---|---|---|
 | `avr/device_test.cpp` | **always** | The pinned ATmega328P constants |
-| `asm/utils_test.cpp` | `drivers/source/utils.asm` exists | `shift_bits`, in the simulator |
+| `asm/utils_test.cpp` | `drivers/source/utils.asm` exists | `shift_bits` and `shift_bits_inverted`, in the simulator |
 | `asm/program_test.cpp` | `drivers/app/main.asm` exists too | The whole program, run rather than called |
 
 So the count goes **9** on a fresh clone, **18** once `utils.asm` exists, and **20** once
@@ -83,7 +83,7 @@ and neither is worth a test that would appear to check them.
 ---
 
 ## Two failures that do not mean what they look like
-**`Utils.SubroutinesAreDefined` fails but the file is right there.** A subroutine with no
+**`Utils.SubroutinesAreDefined` fails but the file is right there.**
 `avra` exports every label, so a subroutine that exists is always callable and there is no
 directive to forget. A failure here means the label is spelled differently from the name the test
 asks for, or the file did not assemble at all. Check the build output above the failure.

@@ -18,16 +18,19 @@ against your current work.
 |---|---|---|
 | L01 to L05's files | see each lecture's README | the pinned constants and the drivers |
 | `avr/watchdog_data_test.cpp` | **always** | The scattered selector bits, and the registers |
+| `avr/sleep_data_test.cpp` | **always** | The sleep modes' restart costs, and `SMCR` |
 | `asm/watchdog_driver_test.cpp` | `drivers/source/watchdog.asm` exists | The driver, in the simulator |
 
-`watchdog_data_test.cpp` is this suite's always-on file, and the last one in the course. It
-checks the one piece of arithmetic nothing else will catch: the four timeout selector bits are not
-adjacent in `WDTCSR`, so the selector and the byte that selects it are different numbers, and
-writing one where the other belongs is not a wrong timeout but a dangerous one.
+`watchdog_data_test.cpp` and `sleep_data_test.cpp` are this suite's always-on files, and the last
+in the course. The first checks the one piece of arithmetic nothing else will catch: the four
+timeout selector bits are not adjacent in `WDTCSR`, so the selector and the byte that selects it
+are different numbers, and writing one where the other belongs is not a wrong timeout but a
+dangerous one. The second checks that the restart costs in Appendix B.6 are the ones
+`atmega328p.hpp` holds.
 
 ---
 
-## The one test in this course that checks timing rather than effect
+## The one test in this course where the hardware checks the timing
 `WatchdogDriver.InitWritesTheByteAsked` looks like an ordinary "did you write the right value"
 test and is not. The two writes of the timed sequence have to land within four cycles of each
 other, the simulator enforces that faithfully, and a sequence that is merely slightly too slow

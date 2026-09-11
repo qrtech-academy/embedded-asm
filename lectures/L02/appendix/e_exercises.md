@@ -2,8 +2,8 @@
 
 > **How to check your work.** Exercise 5 is checked by this lecture's test suite: write the file
 > at the path the specification gives, then run `make test`. The suite is
-> cumulative, so it runs L01's tests too; if something you write here breaks `shift_bits`, this is
-> where it shows up. See [the suite's README](../exercises/test/README.md).
+> cumulative, so it runs L01's `shift_bits` tests too; if something you write here breaks it, this
+> is where it shows up. See [the suite's README](../exercises/test/README.md).
 >
 > The rest are checked by Appendix F, the worked solutions, published after the lecture. Work each
 > one before you read it.
@@ -70,7 +70,7 @@ the LED does in each case.
 **c)** Arduino pins stop at 13. Port B has eight bits. What are the other two, and why can you not
 use them?
 
-**Check yourself:** the whole table is in
+**Check yourself:** the port and bit for every pin are in
 [A.6](./a_io_ports.md#a6-arduino-pin-numbers-are-not-port-bits), and deriving a row is quicker
 than looking it up.
 
@@ -155,7 +155,7 @@ is written.
 ---
 
 ## 8. Cross-check: a driver whose cost depends on its argument
-**Cross-check.** *Compute it by hand, compute it with your own code, measure it, reconcile.*
+**Cross-check.** *Compute it by hand, measure it, reconcile.*
 
 Do the parts in order and write each answer down before starting the next.
 

@@ -29,7 +29,7 @@ reason [L01's cross-check](../../L01/appendix/e_exercises.md) came out the way i
 ---
 
 ## B.2 The stack is one pointer and no protection
-`SP` lives in `SPH:SPL`, at data space `0x5E:0x5D`, and it is the entire stack mechanism. Four
+`SP` lives in `SPH:SPL`, at data space `0x5E:0x5D`, and it is the entire stack mechanism. Three
 different things use it and none of them coordinates with the others:
 
 * `rcall` and `ret`, for return addresses.

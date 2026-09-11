@@ -30,7 +30,7 @@ something that has nothing to do with reading it.
 ## A.2 Four states of a pin
 Two control bits, four combinations, and each one is a different piece of hardware behaviour.
 
-![A two-by-two grid of DDRx against PORTx, giving high-impedance input, input with pull-up enabled, output driven low, and output driven high, with a note that PINx is a fourth thing entirely](./images/port_states.png)
+![A two-by-two grid of DDRx against PORTx, giving high-impedance input, input with pull-up enabled, output driven low, and output driven high, with a note that PINx is the third register and not part of the grid](./images/port_states.png)
 
 **A floating input is the dangerous one.** With `DDRx = 0` and `PORTx = 0` the pin is connected to
 nothing at all, and reading `PINx` gives you whatever the surrounding electrical noise induced on
@@ -86,10 +86,10 @@ course uses pin 13 and why none of them requires you to wire anything.
 
 **The other way round works too, and you will meet it.** An LED can be wired from 5 V through its
 resistor to the pin, in which case driving the pin *low* lights it. That is called sinking rather
-than sourcing, and it inverts everything your driver means. On this part the two directions are
-specified the same, whatever the folklore about older AVRs says: 20 mA either way. It
-is not wrong; it is a different board, and reading `led_on` without knowing which one you have is
-how you end up with a program that is exactly backwards.
+than sourcing, and it inverts everything your driver means. It is not wrong; it is a different
+board, and reading `led_on` without knowing which one you have is how you end up with a program
+that is exactly backwards. On this part the two directions are specified the same, whatever the
+folklore about older AVRs says: 20 mA either way.
 
 ---
 

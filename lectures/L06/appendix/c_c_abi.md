@@ -1,10 +1,10 @@
 # Appendix C - The C ABI
 
 ## C.1 The other party
-Since L02 you have been following a calling convention
+Since L01 you have been following a calling convention
 ([L02 B.3](../../L02/appendix/b_subroutines.md#b3-the-calling-contract)): arguments in `r24` and
-`r22`, results in `r24`, `r18` to `r27` free to destroy, `r2` to `r17` and `r28`, `r29` to be
-given back.
+`r22`, results in `r24`, `r18` to `r27` and `r30`, `r31` free to destroy, `r2` to `r17` and `r28`,
+`r29` to be given back.
 
 Up to now that convention has had one party. Every caller of your subroutines was code you wrote,
 so following the rules was a discipline rather than a requirement, and breaking them would only
@@ -12,7 +12,7 @@ ever have surprised you.
 
 This appendix is the other party arriving. The C compiler follows the same convention, so a
 function it generates can call a subroutine you wrote, and vice versa, with no glue and no
-declaration beyond a prototype. **Everything you have been doing since L02 was for this.**
+declaration beyond a prototype. **Everything you have been doing since L01 was for this.**
 
 ---
 
@@ -67,9 +67,12 @@ reads the result from `r24` for the same reason, and your subroutine has been do
 since L01.
 
 **The prototype is a promise nothing checks.** Declare the argument as `uint16_t` and the compiler
-will pass it in `r25:r24` and your subroutine will read `r24` and ignore `r25`, which works by
-accident for small values and fails for large ones. There is no header, no name mangling and no
-link-time type check; the linker matches a name to a name.
+will pass it in `r25:r24` and your subroutine will read `r24` and ignore `r25`. That gives the same
+answers as before, because C would have cut the argument to its low byte anyway, and it is the
+dangerous kind of wrong: nothing changes, so nothing tells you. Declare the result as `uint16_t`
+too and it stops being harmless. The caller reads `r25:r24`, `r25` still holds the argument's high
+byte because your subroutine never touched it, and `shift_bits(300)` comes back as 256. There is
+no header, no name mangling and no link-time type check; the linker matches a name to a name.
 
 ### The one place this course uses two assemblers
 `avr-gcc` drives GNU `as`, and GNU `as` does not read AVRASM2. It cannot assemble
@@ -202,7 +205,7 @@ to read it properly
 Hand both files to `avr-gcc`, which recognises `.S` and `.c` and does the right thing with each:
 
 ```bash
-avr-gcc -mmcu=atmega328p -Os main.c drivers/source/utils_gnu.S -o drivers/build/mixed.elf
+avr-gcc -mmcu=atmega328p -Os drivers/app/main.c drivers/source/utils_gnu.S -o drivers/build/mixed.elf
 ```
 
 Note that this is a *different* build from the rest of the course, which assembled one unit with
@@ -231,15 +234,16 @@ it back before the call and not merely before the return.
 your own code beside it.
 
 ```bash
-avr-gcc -mmcu=atmega328p -Os -S main.c -o -
+avr-gcc -mmcu=atmega328p -Os -S drivers/app/main.c -o -
 ```
 
 Two things are usually surprising the first time.
 
 **The compiler is better at some things than you expect.** A function whose last act is to call
-another becomes a `jmp` rather than an `rcall` and a `ret`. The `rcall` and `ret` it removes cost
-seven cycles between them and the jump that replaces them costs three, or two if `rjmp` reaches,
-so the saving is four or five cycles and two bytes of stack; that is the tail call from
+another becomes a `jmp` rather than a `call` and a `ret`. On this part the compiler writes `call`
+and `jmp`, because 32 KB of flash is further than `rcall` and `rjmp` reach: the `call` and `ret` it
+removes cost eight cycles between them and the `jmp` that replaces them costs three, so the saving
+is five cycles and two bytes of stack; that is the tail call from
 [L03's driver specification](../../L03/appendix/c_button_driver.md#c5-the-four-interrupt-subroutines),
 applied automatically and everywhere.
 
@@ -302,7 +306,9 @@ SRAM, somewhere above `0x0100`, chosen when the program was linked. That is why 
 `sts` and never `in` and `out`: `in` and `out` reach the first 64 I/O registers and nothing else,
 and no C variable ever lives there
 ([L01 A.5](../../L01/appendix/a_avr_core.md#a5-the-io-window-two-names-for-one-register)). The
-mistake reads well and assembles cleanly, and it configures a peripheral.
+mistake reads well and assembles cleanly, and the linker only warns: it cuts the address down to
+the six bits `in` has room for and builds the program anyway, so `in r24, ticks` reads whichever
+I/O register that lands on and never your variable.
 
 **A 16-bit variable is two loads and the low byte is first.** Which means the same tearing L03
 warned about ([L03 B.4](../../L03/appendix/b_isr_contract.md#b4-the-shared-variable)), on the same

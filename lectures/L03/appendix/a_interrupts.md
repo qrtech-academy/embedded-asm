@@ -20,22 +20,21 @@ interrupt source, and the hardware jumps to a fixed slot for each.
 
 ![The 26 ATmega328P interrupt vectors in two columns with their word addresses, RESET at 0x0000 through SPM_READY at 0x0032, with the ones this course uses marked](./images/vector_table.png)
 
-Three things about that table are worth having straight before you write anything.
+Four things about that table are worth having straight before you write anything.
 
 **RESET is in it.** Vector 0 is the address the machine starts at, which is why a program's first
 instruction has to be a jump to your code rather than the beginning of it: everything from word
 `0x0002` upwards belongs to the table.
 
 **Each slot is two words, so vector `n` is at word `2n`.** PCINT0 is vector 3 and lives at word
-`0x0006`, not `0x0003`.
+`0x0006`, not `0x0003`. Two words, because a `jmp` on a part with 32 KB of flash is a two-word
+instruction, and the table has to hold one even though a hand-written table usually puts a
+one-word `rjmp` there and leaves the second word unused.
 
 > **This course numbers the slots from zero**, so that RESET is vector 0 and the arithmetic is
 > `2n` with nothing added. The datasheet's own table numbers them from **one**, so what it calls
 > "Vector No. 4" is PCINT0, which is vector 3 here. The addresses are the same either way and only
 > the index differs; the offset is worth knowing before you check one against the other.
- Two words, because a `jmp` on a part with 32 KB of flash is a two-word
-instruction, and the table has to hold one even though a hand-written table usually puts a
-one-word `rjmp` there and leaves the second word unused.
 
 **A slot holds a jump, not a handler.** Two words is room for one instruction and nothing else, so
 what goes in a slot is `rjmp` to wherever your handler actually is. There is one exception, and it
@@ -50,7 +49,7 @@ Better still, you need not write the number at all. `m328Pdef.inc` names every v
 
 ```asm
 .org PCI0addr
-    rjmp pcint0_isr
+    rjmp isr_pcint0
 ```
 
 `PCI0addr` is `0x0006`, `WDTaddr` is `0x000c`, `OC1Aaddr` is `0x0016`, and the device file is the
@@ -130,15 +129,15 @@ progress at all while appearing to run.
 Every other cycle count in this course was measured. These were not, and the reason is worth
 stating plainly rather than hiding.
 
-simavr charges a flat **4 cycles** of entry, where the datasheet's own figure is 4 for the push
-plus however much of the current instruction was left to run. The instruction boundary itself is
-modelled: the core finishes what it is executing and takes the interrupt between instructions,
-which is why L05's own cross-check can explain a gap that alternates between
-5332 and 5334 cycles by the two-cycle `rjmp` the flag had to wait for. What is not modelled is the
-*variable* part of the entry: on the real device the wait depends on which instruction was
-interrupted and how far into it the edge landed, and in the simulator it does not. So for this one
-quantity the datasheet is the authority and the simulator is not, and the answer is arrived at by
-reading rather than by measuring.
+simavr gets half of this right. It finishes the instruction it was executing before it takes an
+interrupt, exactly as the device does: a flag that is set during a four-cycle `ret` waits up to
+three cycles in the simulator as it would on the chip, which is also why L05's own cross-check can
+explain a gap that alternates between 5332 and 5334 cycles by the two-cycle `rjmp` the flag had to
+wait for. What it does not do is charge for the entry itself. It pushes the program counter and
+jumps to the vector in no time at all, where the datasheet says the push takes **4 cycles**, so
+every interrupt in the simulator reaches its handler four cycles sooner than it would on the
+device. For that one quantity the datasheet is the authority and the simulator is not, and the
+answer is arrived at by reading rather than by measuring.
 
 That is not a complaint about simavr, which is exact about the thing this course leans on hardest:
 what an instruction costs. It is a reminder that a tool is trustworthy about specific things, and
@@ -162,7 +161,7 @@ instrument:
 * **It does not tell you which pin.** The handler is given nothing at all beyond the fact that
   something on that port changed.
 
-![PCICR and PCMSK0 drawn as their bits, with PCIE0 marked as the whole-port enable and PCINT5 as the single pin, and PCINT7 and PCINT6 greyed as the crystal pins](./images/pcint_registers.png)
+![PCICR and PCMSK0 drawn as their bits, with PCIE0 marked as the whole-port enable and PCINT4 as the single pin, and PCINT7 and PCINT6 greyed as the crystal pins](./images/pcint_registers.png)
 
 Enabling one pin takes both registers:
 

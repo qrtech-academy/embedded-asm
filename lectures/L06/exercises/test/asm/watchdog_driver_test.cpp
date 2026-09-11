@@ -3,9 +3,9 @@
  *
  *        Guarded by HAVE_WATCHDOG.
  *
- *        This is the one driver in the course whose *timing* is checked rather than only its
- *        effect, because the hardware checks it too: the two writes that configure the watchdog
- *        must be within four cycles of each other, and the simulator enforces that faithfully.
+ *        This is the one driver in the course whose *timing* the hardware checks as well as
+ *        the tests: the two writes that configure the watchdog must be within four cycles of
+ *        each other, and the simulator enforces that faithfully.
  *
  *        What makes it worth testing is what a botched sequence leaves behind. The window is
  *        opened by writing WDCE and WDE together; if the second write arrives too late it is

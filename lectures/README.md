@@ -49,7 +49,7 @@ the letter after them is not there yet. `ci/check.sh` accepts both shapes and sa
 found, so a solutions appendix that is merely unpublished never reads like one that was
 forgotten.
 
-**`ci/check.sh` enforces eleven rules, not one.** The appendix-letter rule above is the one worth
+**`ci/check.sh` enforces twelve rules, not one.** The appendix-letter rule above is the one worth
 stating in prose; these are the rest, listed here because a rule nobody has written down is a rule
 that fails at the worst moment:
 
@@ -62,7 +62,7 @@ that fails at the worst moment:
 | Always-on tests | Every suite has at least one `TEST(` outside every `#if`, because `runAllTests()` reports red, silently, when nothing is registered. |
 | Figures | Every committed PNG is embedded by some Markdown, and every image carries at least 25 characters of alt text. |
 | Suite variables | Every suite Makefile assigns `ROOT_DIR` and `QACADEMY_TEST_DIR`. |
-| Assembler dialect | No GNU `as` syntax outside L06, which is the one lecture that writes both. A line that names GNU on the same line is contrast rather than instruction, and passes. |
+| Assembler dialect | No GNU `as` syntax outside L06, which is the one lecture that writes both, and the second exam paper. A line that names GNU on the same line is contrast rather than instruction, and passes. |
 | Structure offsets | Every `.equ` in `drivers/include/*.inc` matches its counterpart in `device/include/avr/drivers.hpp`, by name and by value. Two copies of a layout is what drifts, and this pair drifts silently. |
 | Symbol collisions | No subroutine the suites resolve shares a name with an `.equ` constant. `avra`'s symbol table is case-insensitive, so `timer_tick` and `TIMER_TICK` would be one symbol and the file would not assemble. |
 | Section rules | Every `##` is preceded by a `---`, except one sitting directly under the document's own `#` title, where there is no earlier section to separate it from. |

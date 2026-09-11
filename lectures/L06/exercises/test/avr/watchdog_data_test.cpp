@@ -65,8 +65,8 @@ TEST(WatchdogData, BitNumbers)
 /**
  * @brief The four selector bits are not adjacent, and WDCE and WDE sit between them.
  *
- *        WDP3 is bit 5 and WDP2 to WDP0 are bits 2 to 0. That gap is the whole reason this
- *        lecture has a `controlByte` method rather than a constant.
+ *        WDP3 is bit 5 and WDP2 to WDP0 are bits 2 to 0. That gap is the whole reason the
+ *        byte has to be worked out rather than copied.
  */
 TEST(WatchdogData, SelectorBitsAreScattered)
 {

@@ -1,4 +1,4 @@
-# Appendix C - Counting Cycles, and the Toolkit That Does It
+# Appendix C - Counting Cycles
 
 ## C.1 Why bother
 On most machines you cannot say what a routine costs. Caches, branch prediction and out-of-order
@@ -14,8 +14,7 @@ you can work out on paper before the code exists, and that changes what is worth
 * When a measurement disagrees with your count, one of you is wrong about the code, and finding
   out which is a productive afternoon rather than a guess about the hardware.
 
-This appendix is that table, the arithmetic on top of it, and the specification of the two classes
-you write to do the arithmetic for you.
+This appendix is that table, and the arithmetic on top of it.
 
 ---
 
@@ -96,7 +95,7 @@ For `shift_bits` with an argument of `n`:
 | `cp` | 1 | `n + 1` | `n + 1` |
 | `breq`, falling through | 1 | `n` | `n` |
 | `breq`, taken | 2 | 1 | 2 |
-| `add` | 1 | `n` | `n` |
+| `lsl` | 1 | `n` | `n` |
 | `inc` | 1 | `n` | `n` |
 | `rjmp` | 2 | `n` | `2n` |
 | `mov` | 1 | 1 | 1 |
@@ -121,8 +120,8 @@ cycles of getting there, and the instructions that set up the arguments, belong 
 counting them is the caller's table's job.
 
 **It does not know about interrupts.** An interrupt arriving mid-routine adds the handler's cost
-plus four cycles of entry and four of `reti`, at a moment nothing in this model can predict. From
-L03 onwards that is a real effect and a hand count will simply be wrong about it, by an amount
+plus six to nine cycles of entry and four of `reti`, at a moment nothing in this model can predict.
+From L03 onwards that is a real effect and a hand count will simply be wrong about it, by an amount
 that depends on what else is running. Where that matters, the answer is to measure.
 
 **It does not know whether your table matches your code.** Nothing checks that the rows you wrote

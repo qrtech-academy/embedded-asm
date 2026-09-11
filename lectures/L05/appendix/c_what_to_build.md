@@ -1,9 +1,9 @@
 # Appendix C - What To Build
 
 ## C.1 The task
-Three things: `avr::timer::Timer`, which does the arithmetic; `drivers/source/timer.asm`, which
-counts interrupts so that one hardware timer can drive several rates; and the hardware setup in
-`drivers/app/main.asm`, which uses the numbers the first produced.
+Two things: `drivers/source/timer.asm`, which counts interrupts so that one hardware timer can
+drive several rates; and the hardware setup in `drivers/app/main.asm`, which uses the prescaler
+and compare value you worked out by hand in [Appendix B](./b_frequency.md).
 
 ---
 
@@ -71,7 +71,8 @@ rather than finishing the one that was interrupted.
 
 **Fire on the target-th call, not the one before or after.** With a target of 4, the fourth call
 returns 1 and the three before it return 0. Increment first, then compare; the other order is off
-by one, and shows up as a rate a few per cent wrong rather than as anything obviously broken.
+by one, and shows up as every period one interrupt long, a rate 20% slow at a target of 4 and 0.1%
+slow at 1000, rather than as anything obviously broken.
 
 **Clear the count *after* firing, to zero and not to one.** Otherwise every period after the first
 is one interrupt short.
@@ -109,8 +110,13 @@ And add a handler at the `TIMER1_COMPA` vector, which is vector 11, so `.org 0x1
 the same shape as L03's: save what you use and SREG, call `timer_tick` on each software timer,
 act on the ones that returned 1, restore, `reti`.
 
-**Use the numbers your own `Timer` produced.** Ask it for 1 kHz on a 16-bit counter and write down
-the prescaler and compare value it gives you; that is the point of having written it.
+**Blink a second LED, not L03's.** Put it on Arduino pin 8 and leave the one on pin 13 to the
+button: L03's integration tests run in this suite too, and one of them watches pin 13 for eight
+million cycles and expects nothing to change it.
+
+**Use the numbers you worked out.** Work out the prescaler and compare value for 1 kHz on a
+16-bit counter by hand, by the rule in [B.3](./b_frequency.md#b3-choosing-the-prescaler), and
+write those in.
 
 **All four registers need `lds` and `sts`.** They are in extended I/O and `out` cannot reach them.
 

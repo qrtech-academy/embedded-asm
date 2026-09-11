@@ -36,8 +36,8 @@ TEST_FILES := $(L01_TESTS)/avr/device_test.cpp \
 # --------------------------------------------------------------------------------------------
 # Switching the assembly tests on.
 #
-# A test for a subroutine you have not written cannot compile, let alone pass. The C++ tests
-# solve that with #if __has_include, which needs no help from a makefile. Assembly has no
+# A test for a subroutine you have not written cannot compile, let alone pass. A C++ header can
+# be detected with #if __has_include, which needs no help from a makefile. Assembly has no
 # equivalent, so this is it: one -DHAVE_<NAME> for every .asm in drivers/source, derived from what
 # is actually there. Write drivers/source/utils.asm and HAVE_UTILS appears; there is no list here
 # to keep in step, and no way to forget.

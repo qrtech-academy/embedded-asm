@@ -256,11 +256,9 @@ TEST(Btn, DisableClearsOnlyTheMaskBit)
 /**
  * @brief Disabling one button leaves another button on the same port enabled.
  *
- *        This is the test that catches a `btn_disable_interrupt` which shifts by the wrong
- *        field of the structure. Reading the pin *register* pointer where the pin *number*
- *        belongs gives a shift count of 0x23, which produces a mask of zero, which clears
- *        nothing at all; with one button, "nothing happened" and "the right thing happened" look
- *        identical from outside.
+ *        This is the test that catches a `btn_disable_interrupt` which writes the mask register
+ *        instead of clearing one bit of it. With one button, clearing the whole register and
+ *        clearing only that button's bit look identical from outside, so it takes two.
  */
 TEST(Btn, DisablingOneButtonLeavesAnother)
 {

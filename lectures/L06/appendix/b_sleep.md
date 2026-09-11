@@ -30,9 +30,10 @@ The layout is one byte with three bits that matter and one that switches it on:
 ```
 
 `SE` is bit 0 and the mode occupies bits 3 to 1, which means the mode is the encoding **shifted
-left by one**: power-down is `SM2:SM0 = 010`, so the byte is `0x04`, and `0x05` with `SE` set. A
-mode written without that shift lands one mode too shallow and the program still sleeps, which is
-why this is worth writing down rather than deriving each time.
+left by one**: power-down is `SM2:SM0 = 010`, so the byte is `0x04`, and `0x05` with `SE` set.
+Power-down written without that shift, `010` with `SE` beside it, is `0x03`: ADC noise reduction,
+one mode too shallow, and the program still sleeps, which is why this is worth writing down rather
+than deriving each time.
 
 `SMCR` is inside the I/O window, so `in` and `out` reach it, unlike the watchdog's register: it is
 data address `0x53` and I/O address `0x33`, and the name in `m328Pdef.inc` is the second

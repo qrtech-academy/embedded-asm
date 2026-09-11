@@ -1,6 +1,6 @@
 # Appendix D - Exercises
 
-> **How to check your work.** Exercises 5, 6 and 7 are checked by this lecture's test suite:
+> **How to check your work.** Exercises 5 and 6 are checked by this lecture's test suite:
 > write the file at the path the specification gives, then run `make test`. The suite is
 > cumulative and runs L01's and L02's tests too. See
 > [the suite's README](../exercises/test/README.md).
@@ -46,18 +46,16 @@ an `rjmp`. How many cycles pass before the handler's first instruction? Show the
 **d)** The compiler puts `jmp` in vector slots rather than `rjmp`. Redo (b) and (c) for a `jmp`
 table, and say in one sentence why a compiler would choose the slower one.
 
-**e)** Your handler measures 88 cycles including its `reti`, and the table uses `rjmp`. For how
-long are interrupts disabled? The answer is not 88.
-
-**Check yourself:** `avr::interrupt::Vectors` answers all five once you have written it.
+**e)** Your handler measures 104 cycles including its `reti`, and the table uses `rjmp`. For how
+long are interrupts disabled? The answer is not 104.
 
 ---
 
 ## 3. The prologue
 **Design.**
 
-A handler is about to be written. It calls `btn_pressed`, which uses `r18`, `r19` and `r24`,
-and it uses `r24` and `r25` itself to pass a pointer.
+A handler is about to be written. It calls `btn_pressed` and `led_toggle`, which between them
+use `r18`, `r19`, `r24`, `X` and `Z`, and it uses `r24` and `r25` itself to pass a pointer.
 
 **a)** List every register the handler must save, and say why the list is not "the call-saved
 ones".
@@ -107,7 +105,7 @@ which tests fail. One of them is not about `btn_interrupt_enabled` at all. Expla
 failed, then put the code back.
 
 **d)** Deliberately make `btn_disable_interrupt` clear `PCICR` as well as the mask bit. Say
-which test catches it and why a test with only one button could not.
+which test catches it, and why the test with two buttons does not.
 
 ---
 
@@ -121,8 +119,10 @@ pin 13 and the button on pin 12.
 
 **b)** `make build` should build `app.hex`.
 
-**c)** Move `sei` from the end of setup to the beginning, before the structures are built.
-Describe what could now go wrong, and say why testing it would probably not show you.
+**c)** Move `sei` from the end of setup to the beginning, before the structures are built. Say
+whether anything goes wrong in your program as it stands, and why. Then enable the button's
+interrupt before `btn_init` as well: describe what could now go wrong, and say why testing it would
+probably not show you.
 
 **d)** Put the button on pin 13 as well, so the LED and the button share a pin. Predict what
 happens before rebuilding, then check.
@@ -152,7 +152,7 @@ protecting? Say why, in one sentence about instructions.
 ---
 
 ## 8. Cross-check: how long is the door shut
-**Cross-check.** *Compute it by hand, compute it with your own code, measure it, reconcile.*
+**Cross-check.** *Compute it by hand, measure it, reconcile.*
 
 Your handler runs with interrupts disabled. This exercise is about finding out for how long, and
 about which parts of that number you can measure and which you cannot.
@@ -164,10 +164,9 @@ have not measured it yet, do that now.
 
 **b) The whole window.** Add the entry to your handler's own cost: four cycles for the hardware's
 push, two for the `rjmp` in the vector slot, then the handler, then the `reti`. **This is the one
-number in the lecture you cannot check by measuring**, because simavr reports a flat four-cycle
-entry where the datasheet says six to nine
-([A.4](./a_interrupts.md#a4-what-happens-in-order)). Write it down anyway, and expect (c) to
-disagree.
+number in the lecture you cannot check by measuring**, because simavr charges nothing for the
+hardware's four-cycle push ([A.4](./a_interrupts.md#a4-what-happens-in-order)). Write it down
+anyway, and expect (c) to disagree.
 
 **c) By measurement.**
 
@@ -179,7 +178,7 @@ make measure IMAGE=app CALLS="led_init:0x0200:13 btn_init:0x0240:12 --drive B4=1
 because a handler lives in your program, not in the driver library. This works at all because
 `reti` pops a return address exactly as `ret` does.
 
-**d) Reconcile.** The three should agree. If they do not, the most likely culprits are the branch
+**d) Reconcile.** The two should agree. If they do not, the most likely culprits are the branch
 you charged one cycle instead of two, and forgetting that the measured figure already includes the
 `reti`.
 
@@ -193,9 +192,10 @@ State the difference between the two paths and account for every cycle of it. Th
 terms and two of them are negative.
 
 **f) The part you cannot measure.** Add the response time from
-[A.4](./a_interrupts.md#a4-what-happens-in-order) to get the total worst-case delay before a
-*second* interrupt can be served. Then set that against what the simulator claims: it reports a
-flat 4 cycles from the pin changing to the handler, whatever it interrupted
+[A.4](./a_interrupts.md#a4-what-happens-in-order), not forgetting the one main-program instruction
+A.4 guarantees after `reti`, to get the total worst-case delay before a *second* interrupt can be
+served. Then set that against what the simulator does: it finishes the
+interrupted instruction as the device would, and then charges nothing at all for the push
 ([A.4](./a_interrupts.md#a4-what-happens-in-order)). Note that there is no measurement to make
 here, because the harness offers none for this quantity, which is itself part of the answer. Say
 which of your sources you believe and why, and state the general rule you would apply next time a

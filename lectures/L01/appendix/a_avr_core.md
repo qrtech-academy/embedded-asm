@@ -209,7 +209,7 @@ instruction to put the number 15 and mean the sixteenth register.
 space for one instruction, and is why the immediate can afford to be a full byte.
 
 So `ldi r16, 0x2A` is `1110 0010 0000 1010` = `0xE20A`. You will confirm that number three ways in
-this lecture: by hand, by calling your own `encodeLdi` (C.5), and by looking at what `avr-objdump`
+this lecture: by hand, in the listing `avra` writes beside your source, and in what `avr-objdump`
 says the assembler produced (B.3).
 
 ---

@@ -55,13 +55,13 @@ Worked at 16 MHz for 1 kHz:
 
 So Timer1 takes prescaler 1 with `OCR1A = 15999`, and Timer0 takes prescaler 64 with
 `OCR0A = 249`. **Same frequency, different numbers**, because the counters are different widths;
-both are exact here, and that is luck rather than design.
+both are exact here, and [B.4](#b4-what-you-actually-get) says why.
 
 ---
 
 ## B.4 What you actually get
 Build this table before reading it. Every row is the same three steps, and doing them by hand
-four times is what turns the rule into something you can apply to a frequency that is not here.
+seven times is what turns the rule into something you can apply to a frequency that is not here.
 
 | Wanted | Timer1, 16-bit | Timer0, 8-bit |
 |---|---|---|
@@ -75,7 +75,7 @@ four times is what turns the rule into something you can apply to a frequency th
 
 Three things in that table are worth stopping on.
 
-**3 kHz misses by sixty times more on the 8-bit timer.** Same clock, same frequency, same
+**3 kHz misses by sixty-four times more on the 8-bit timer.** Same clock, same frequency, same
 arithmetic; the only difference is that one has 5333 ticks to work with and the other 83.
 
 **At 3 MHz both are equally bad.** With only five ticks in a period, the width of the counter
@@ -110,17 +110,17 @@ that the counter runs out of values rather than that you chose the wrong one.
 That is a real constraint on real projects, and the answer to it is not a bigger register. It is
 to accept an interrupt rate the hardware *can* reach and count those interrupts yourself, which
 is [C.4](./c_what_to_build.md#c4-what-to-build-in-assembly-driverssourcetimerasm) and the reason
-this lecture has an assembly half at all.
+this lecture has a driver at all.
 
 ---
 
 ## B.6 Rounding is a decision
 `16000000 / (1 × 3000)` is 5333.33, and 5333 is nearer than 5334, so round to nearest.
 
-That is a choice, and it should be made deliberately rather than by whichever way the language
-happens to truncate. Truncating always rounds down, so it always produces a period that is too
-short and a frequency that is too high, systematically, in every calculation you ever do with it.
-Rounding to nearest is wrong half the time by half as much.
+That is a choice, and it should be made deliberately rather than by whichever way integer division
+happens to truncate. Truncating always rounds down, so it always produces a period that is too short
+and a frequency that is too high, systematically, in every calculation you ever do with it. Rounding
+to nearest is wrong half the time by half as much.
 
 **Round to nearest, with a half rounding up**, and use that rule everywhere rather than choosing
 per calculation: one rule everywhere is one rule to check.
@@ -167,7 +167,7 @@ at from first principles and an obvious one afterwards, and it is the clearest e
 has of a measurement that is telling you about the code being interrupted rather than about the
 thing you were measuring.
 
-[Appendix D](./d_exercises.md) has you reproduce all three, and the kernel course that follows this
-one meets the same rule again with the scheduler's own round trip added to the sum.
+[Appendix D](./d_exercises.md) has you reproduce the first two, and the kernel course that follows
+this one meets the same rule again with the scheduler's own round trip added to the sum.
 
 ---

@@ -73,8 +73,8 @@ C:000002 8300          std  Z + LED_PIN_REG, r16
 ```
 
 The first column is the **word** address, the second is the encoding, and the rest is your own
-line, comment included. That is the third view of one artifact this lecture keeps promising: the
-source you wrote, the bits it became, and the address each landed at, on one line.
+line, comment included. That is the source you wrote, the bits it became, and the address each
+landed at, all on one line.
 
 To disassemble instead, starting from the machine code and recovering the instructions, which is
 the skill this course is actually after, point `avr-objdump` at the hex:
@@ -140,9 +140,9 @@ symbol and call one subroutine at a time. This is the image nearly everything in
 loads, and it is the one `make measure` uses by default.
 
 **`drivers/build/app.hex`** is `drivers/app/main.asm` assembled together with those same
-subroutines: a whole program with a vector table and a main loop. L03's integration test loads
-this one and lets it run, because an interrupt cannot be called; it has to arrive. Nothing in L01
-needs it, and L03 needs nothing else. Reach it with `make measure IMAGE=app`.
+subroutines: a whole program with a vector table and a main loop. L01's program test and L03's
+integration test load this one and let it run, because a program cannot be called and an
+interrupt has to arrive. Reach it with `make measure IMAGE=app`.
 
 Each comes with a `.map` beside it, and the two are read together: the hex is the program and
 the map is the names. Delete one and the harness reports the other missing.
@@ -180,15 +180,17 @@ make measure SYMBOL=shift_bits ARG=5
 ```
 
 ```text
-shift_bits(r24=5, r22=0)
+shift_bits(r25:r24 = 0x0005, r22 = 0)
   cycles     40
   time       2.500 us at 16.0 MHz
   returned   r24 = 32 (0x20)
+
+deepest stack: SP reached 0x08FD, 2 bytes below RAMEND
 ```
 
-It assembles whatever is in `drivers/source`, loads it, sets `r24` and `r22` to the arguments you
-gave, calls the symbol, and reports what came back and what it cost. `IMAGE=app` measures against
-the whole program instead of the library, which is what an interrupt handler needs (B.4).
+It assembles whatever is in `drivers/source`, loads it, sets `r25:r24` and `r22` to the arguments
+you gave, calls the symbol, and reports what came back and what it cost. `IMAGE=app` measures
+against the whole program instead of the library, which is what an interrupt handler needs (B.4).
 
 **The figure excludes the `rcall` that would have got you there**, because there was no `rcall`:
 the tool sets the program counter directly, the way the tests do. That is not a defect and it is
@@ -228,7 +230,7 @@ PCINT0 in both, and no conversion stands between them. Better still, `m328Pdef.i
 
 ```asm
 .org PCI0addr
-    rjmp pcint0_isr
+    rjmp isr_pcint0
 ```
 
 `PCI0addr`, `WDTaddr`, `OC1Aaddr` and the rest are defined in the device file, so the magic number

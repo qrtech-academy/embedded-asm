@@ -8,8 +8,8 @@ destroys, and the interrupted code has no idea it was interrupted and will carry
 it had.
 
 This is the difference between an interrupt handler and a subroutine, and it is not a small one. A
-subroutine has a caller who agreed to a contract: `r18` to `r27` are clobbered, and a caller who
-wanted one kept saved it first
+subroutine has a caller who agreed to a contract: `r18` to `r27`, `r30` and `r31` are clobbered,
+and a caller who wanted one kept saved it first
 ([L02 B.3](../../L02/appendix/b_subroutines.md#b3-the-calling-contract)). A handler has no caller.
 It interrupts code that agreed to nothing, could not have agreed to anything, and does not know
 it happened.
@@ -60,12 +60,13 @@ two words of flash on top of that.
 ## B.3 Registers, and the cost of a handler
 Beyond SREG, save every register your handler writes, including any that a subroutine you call
 will clobber. That last part catches people: a handler that calls `btn_pressed` has to save
-`r18`, `r19`, `r24` and `r25` even though it never names `r18` itself, because the subroutine does.
+`r18`, `r19`, `r24` and `r25`, and the pointer registers `X` and `Z` as well, even though it never
+names `r18`, `X` or `Z` itself, because the subroutines it calls do.
 
 Each `push` is 2 cycles and each `pop` is 2, so a saved register costs 4 cycles for the round trip
-and one byte of stack. A handler saving four registers plus SREG makes five pushes and five pops:
-with the `in` and the `out` around them that is 11 cycles before it does anything and 11 more on
-the way out, 22 in all.
+and one byte of stack. A handler saving eight registers plus SREG makes nine pushes and nine pops:
+with the `in` and the `out` around them that is 19 cycles before it does anything and 19 more on
+the way out, 38 in all.
 
 That is the argument for short handlers, and it is worth being precise about what "short" buys
 you, which is [B.5](#b5-how-long-are-interrupts-off).
@@ -127,11 +128,11 @@ window in which no other interrupt can be served is:
 Four for the push, two more for an `rjmp` in the table, and then everything you wrote. Six cycles
 are the hardware's and the rest is yours.
 
-On the reference implementation, the button handler measures **88 cycles when the button is not
-pressed and 147 when it is**, so it blocks interrupts for **94** or **153** cycles, which is
-5.875 µs or 9.5625 µs at 16 MHz. Whether that is a lot depends entirely on what else is waiting;
-`avr::interrupt::Vectors::blockedCycles` is how you find out for your own handler, and
-[Appendix D](./d_exercises.md)'s cross-check is where you check the answer against a measurement.
+On the reference implementation, the button handler measures **104 cycles when the button is
+not pressed and 163 when it is**, so it blocks interrupts for **110** or **169** cycles, which is
+6.875 µs or 10.5625 µs at 16 MHz. Whether that is a lot depends entirely on what else is waiting;
+[Appendix D](./d_exercises.md)'s cross-check is where you work it out for your own handler and
+check the answer against a measurement.
 
 **What being blocked costs is lateness, not loss.** A pin change interrupt sets a flag, and the
 flag stays set until it is served, so a second interrupt arriving during your handler is delayed
@@ -156,8 +157,8 @@ thousand frames is your variables overwritten from the top down, with no fault a
 **Do not assume it runs once per event.** A mechanical button bounces
 ([L02 A.5](../../L02/appendix/a_io_ports.md#a5-a-button-and-why-pressed-reads-zero)), and a pin
 change interrupt fires on every one of those transitions. A handler that toggles an LED on each
-press will toggle it four or five times per press, and the LED will appear to respond about half
-the time. That is not a fault in your handler and no amount of rereading it will help.
+press will run four to ten times per press, and the LED will appear to respond about half the
+time. That is not a fault in your handler and no amount of rereading it will help.
 
 **And do not forget it can happen between any two instructions of anything.** Including between
 the two `lds` of B.4, and including inside a subroutine the main loop was halfway through.

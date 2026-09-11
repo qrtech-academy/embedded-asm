@@ -1,6 +1,8 @@
 # L02 Test Suite
-Unit tests for everything L02 asks you to write, **and everything L01 asked you to write**, using
-the [QAcademy Test](https://github.com/qrtech-academy/test-framework) framework.
+Unit tests for the LED driver L02 asks you to write, **and for the two subroutines L01 asked you
+to write**, using the [QAcademy Test](https://github.com/qrtech-academy/test-framework) framework.
+Nothing here tests `drivers/app/main.asm`: L01's program tests stay in L01's suite, because the
+program is rewritten from L02 onwards, and L02's version of it (exercise 9) has no test.
 
 ```bash
 make            # build and run
@@ -56,8 +58,8 @@ calling it finds the mask sitting where the port contents should be. This is the
 to write a driver that assembles, runs, and does nothing at all.
 
 **`Led.InitLeavesTheRestOfThePortAlone` fails on its own.** You assigned to a port register
-instead of reading, modifying and writing it. With one LED nothing looks wrong; the test has two
-for exactly this reason.
+instead of reading, modifying and writing it. With one LED nothing looks wrong; the test sets two
+other bits of `DDRB` first for exactly this reason.
 
 ---
 

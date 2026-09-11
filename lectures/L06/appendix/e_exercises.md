@@ -1,9 +1,9 @@
 # Appendix E - Exercises
 
-> **How to check your work.** Exercises 5 and 6 are checked by this lecture's test suite: write
-> the file at the path the specification gives, then run `make test`. The suite is cumulative and
-> runs L01 to L05's tests too. Exercise 7 is the C capstone, which no test covers: it needs the C
-> runtime and is built by hand, as [the suite's README](../exercises/test/README.md) describes.
+> **How to check your work.** Exercise 5 is checked by this lecture's test suite: write the file
+> at the path the specification gives, then run `make test`. The suite is cumulative and runs L01
+> to L05's tests too. Exercise 6 is the C capstone, which no test covers: it needs the C runtime
+> and is built by hand, as [the suite's README](../exercises/test/README.md) describes.
 >
 > The rest are checked by Appendix F, the worked solutions, published after the lecture.
 >
@@ -79,8 +79,8 @@ selector bits are not contiguous, so no control byte is ever the timeout number.
 **b)** Four cycles is the limit. Roughly how many cycles would an interrupt take if one landed
 between the two writes? Say why `cli` is therefore not optional.
 
-**c)** What is in `WDTCSR` if the second write arrives too late? Say why that particular value is
-the worst possible outcome.
+**c)** On a device fresh from reset, what is in `WDTCSR` if the second write arrives too late? Say
+why that particular value is the worst possible outcome.
 
 **d)** Why must `WDRF` be cleared before `WDE` can be? Give the reason the hardware behaves that
 way, and the consequence for a driver that forgets.
@@ -124,7 +124,8 @@ what `-mmcu=atmega328p` is deciding that `avra` decided some other way, and say 
 code does that your `main.asm` used to do by hand.
 
 **c)** Declare the prototype's argument as `uint16_t` instead, rebuild, and say what now happens
-for an argument of 5 and for an argument of 300. Then put it back.
+for an argument of 5 and for an argument of 300. Then declare the result as `uint16_t` as well and
+answer the same question. Then put both back.
 
 **d)** Write a C function and call it from your assembly. Say which registers you had to assume it
 would destroy.
@@ -150,7 +151,7 @@ causes.
 ---
 
 ## 8. Cross-check: your assembly against the compiler's
-**Cross-check.** *Compute it by hand, compute it with your own code, measure it, reconcile.*
+**Cross-check.** *Compute it by hand, measure it, reconcile.*
 
 The last cross-check in the course, and the only one where the thing you are checking against is
 somebody else's work.
@@ -205,6 +206,6 @@ do something else entirely, and why.
 
 **e)** Working out why a program that worked yesterday now resets every few seconds.
 
-**f)** One of the six answers above is the one this course was really for. Say which.
+**f)** One of the five answers above is the one this course was really for. Say which.
 
 ---

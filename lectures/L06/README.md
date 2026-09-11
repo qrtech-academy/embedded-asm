@@ -5,7 +5,7 @@
 * The timed write sequence: hardware that refuses to be configured carelessly, and why.
 * The one typo in this lecture that leaves a device resetting every sixteen milliseconds.
 * Sleep modes, and which of them a timer can wake you from. It is fewer than you would like.
-* The AVR C ABI in full, and where you have been following it since L02 without a second party.
+* The AVR C ABI in full, and where you have been following it since L01 without a second party.
 * Calling your assembly from C, and reading what the compiler generates for the same job.
 
 ---
@@ -13,13 +13,14 @@
 ## Lecture plan
 Worked in this order:
 1. **What a watchdog is for.** Read [Appendix A](./appendix/a_watchdog.md) and decide, before you
-   are told, which of five failures a watchdog would catch. The answer is one of them.
+   are told, which of five failures a watchdog would catch. The answer is two of them, and a third
+   eventually.
 2. **The timed sequence.** Two writes, four cycles apart at most. Get it wrong and the register
    holds a value that is not merely wrong but specifically dangerous.
 3. **Sleeping.** What stops in each mode, and the two things that can always wake you.
 4. **The other party to the contract.** [Appendix C](./appendix/c_c_abi.md) is the one place in
    this course where somebody else's code has to agree with yours about registers, and it turns
-   out you have been getting it right since L02.
+   out you have been getting it right since L01.
 5. **The capstone.** Call `shift_bits`, unchanged from L01, from a C program. Then read what the
    compiler produces for the same job and compare.
 
@@ -100,10 +101,10 @@ The two written papers in [`exam/`](../../exam/README.md) are there if you want 
 on paper. They gate nothing and no part of the course requires them.
 
 **Real-Time Kernel Design** is the course that follows this one: the same part, the same harness,
-the same three-way check, building a preemptive kernel one context switch at a time. It names this
-course a prerequisite and it means it. L03's ISR contract, L04's stack arithmetic and C.5's
-loadable stack pointer, L05's timer arithmetic, and this lecture's C ABI in both directions are
-used there rather than recapped. The half of a kernel that must be assembly is about two files
-out of a dozen, and knowing *which* two is most of what that course is for.
+the same check by hand and by measurement, building a preemptive kernel one context switch at a
+time. It names this course a prerequisite and it means it. L03's ISR contract, L04's stack
+arithmetic and C.5's loadable stack pointer, L05's timer arithmetic, and this lecture's C ABI in
+both directions are used there rather than recapped. The half of a kernel that must be assembly is
+about two files out of a dozen, and knowing *which* two is most of what that course is for.
 
 ---

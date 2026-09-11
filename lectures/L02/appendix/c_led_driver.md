@@ -124,10 +124,12 @@ costs `slope × bit + constant`, and the slope is the interesting half.
 | `led_enabled` | 6 | one `shift_bits` |
 | `led_init` | 13 | one of each |
 
-**The test suite checks the slopes and not the constants.** That is a deliberate change from L01,
-where the specification gave `shift_bits` instruction by instruction and the test asserted its
-cost exactly. A driver is a bigger thing with more than one reasonable shape, and the slope is the
-part that follows from what it has to do rather than from how you chose to write it.
+**The test suite checks two of these slopes, `led_on`'s and `led_off`'s, and none of the
+constants.** It also checks that `led_enabled` costs one cycle more when the answer is yes. That
+is a deliberate change from L01, where the specification gave `shift_bits` instruction by
+instruction and the test asserted its cost exactly. A driver is a bigger thing with more than one
+reasonable shape, and the slope is the part that follows from what it has to do rather than from
+how you chose to write it.
 
 The one absolute figure worth having in mind: on the reference implementation `led_on` costs **59
 cycles for Arduino pin 13 and 29 for pin 8**, which is 3.7 µs against 1.8 µs at 16 MHz.
@@ -143,8 +145,8 @@ reports the state of the pin, bounces included.
 means it stays right if something else changes the port behind its back, and it also means it
 cannot tell you whether the LED is *meant* to be on.
 
-**It does not check that the pin is an output.** `led_on` on a structure built by a future
-`btn_init` would enable a pull-up rather than lighting anything. There is no type system here;
+**It does not check that the pin is an output.** `led_on` on a pin that something else has made an
+input would enable a pull-up rather than lighting anything. There is no type system here;
 the structure is seven bytes and any subroutine will operate on any seven bytes it is given.
 
 **It does not protect one LED from another.** Two structures pointing at the same bit of the same

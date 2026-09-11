@@ -204,7 +204,7 @@ them fails. A subroutine can be called: a test sets the program counter to `shif
 number in `r24` and reads `r24` back. A program cannot. It has no arguments, it never returns, and
 the only way to find out what it does is to **let it run** and then look at the machine:
 
-```asm
+```cpp
     mcu.run(2000);                      // 2000 cycles of your program
     mcu.data(0x24) & (1 << 5)           // DDRB, in the data space
 ```
@@ -219,8 +219,8 @@ again, seen from the third side, and it is the last time this course will point 
 make measure SYMBOL=shift_bits ARG=5
 ```
 
-Do not run that until you have predicted the answer. Predicting it, twice, and then reconciling
-both predictions against the measurement is [Appendix E](./e_exercises.md)'s cross-check, and it
+Do not run that until you have predicted the answer. Predicting it by hand, and then reconciling
+the prediction against the measurement, is [Appendix E](./e_exercises.md)'s cross-check, and it
 is the exercise this whole lecture exists to set up.
 
 ---

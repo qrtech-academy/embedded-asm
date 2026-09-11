@@ -1,5 +1,5 @@
 # Appendix E - Exercises
-> **How to check your work.** Exercises 5 to 8 are checked by this lecture's test suite: write the
+> **How to check your work.** Exercises 5 and 6 are checked by this lecture's test suite: write the
 > file at the path the specification gives, then run `make test` from the repository root. Nothing
 > has to be registered; creating the file is what switches its tests on. See
 > [the suite's README](../exercises/test/README.md).
@@ -34,7 +34,7 @@ that does not.
 
 ---
 
-## 2. Assembling three instructions by hand
+## 2. Assembling four instructions by hand
 **Hand calculation.**
 
 Using the encoding in [A.6](./a_avr_core.md#a6-what-an-instruction-is), and nothing else, work out
@@ -166,8 +166,8 @@ instruction, with how many times each one runs.
 **c)** From those two, write down the general formula in terms of `n`.
 
 **d)** How many times does the `cp` execute when `n` is 3? How many times does the `breq`? How
-many of those `breq` executions are taken? These three numbers are not the same, and getting them
-confused is the usual reason a hand count comes out wrong.
+many of those `breq` executions are taken? These three numbers are not all the same, and getting
+them confused is the usual reason a hand count comes out wrong.
 
 **e)** Do the same for `shift_bits_inverted`, and state the difference between the two formulas in
 one sentence about a single instruction.
@@ -186,7 +186,7 @@ conversion in your head once is worth more than a function that does it for you.
 
 **b) The table, in full.** Write out the count for `n = 7` in the shape
 [C.4](./c_counting_cycles.md#c4-counting-a-routine-on-paper) gives: one row per instruction, its
-cost, how many times it runs, and the product. You will need it in (f), and a formula you cannot
+cost, how many times it runs, and the product. You will need it in (d), and a formula you cannot
 decompose is a formula you cannot find the mistake in.
 
 **c) By measurement.**

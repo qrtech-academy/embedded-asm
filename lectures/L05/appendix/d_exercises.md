@@ -1,6 +1,6 @@
 # Appendix D - Exercises
 
-> **How to check your work.** Exercises 5, 6 and 7 are checked by this lecture's test suite: write
+> **How to check your work.** Exercise 5 is checked by this lecture's test suite: write
 > the file at the path the specification gives, then run `make test`. The suite is cumulative and
 > runs L01 to L04's tests too. See [the suite's README](../exercises/test/README.md).
 >
@@ -47,8 +47,8 @@ and for an 8-bit one, and the error in each case.
 **e)** For another, the 8-bit timer is more than an order of magnitude worse. Say which, give the
 ratio, and explain it in terms of ticks rather than of bits.
 
-**Check yourself:** the worked rows are in
-[B.4](./b_frequency.md#b4-what-you-actually-get), and the rule that produces them is
+**Check yourself:** the 3 kHz row is worked in
+[B.4](./b_frequency.md#b4-what-you-actually-get), and the rule that produces every row is
 B.3.
 
 ---
@@ -110,13 +110,14 @@ Extend `drivers/app/main.asm` to the specification in
 [C.5](./c_what_to_build.md#c5-the-hardware-setup).
 
 **a)** Configure Timer1 for a 1 kHz compare-match interrupt, using the prescaler and compare
-value your own `Timer` gave you.
+value you worked out by hand.
 
 **b)** Add the handler at the `TIMER1_COMPA` vector. Give the `.org` address you used and say
 where the number came from.
 
-**c)** Have the handler call `timer_tick` on a software timer with a target that blinks the LED
-at a rate you can see, and say what target you chose and why.
+**c)** Initialise a second LED, on Arduino pin 8, and have the handler call `timer_tick` on a
+software timer with a target that blinks it at a rate you can see. Say what target you chose and
+why.
 
 **d)** `make build` should build `app.hex`.
 
@@ -143,7 +144,7 @@ more not merely inaccurate?
 ---
 
 ## 8. Cross-check: how far apart are two interrupts
-**Cross-check.** *Compute it by hand, compute it with your own code, measure it, reconcile.*
+**Cross-check.** *Compute it by hand, measure it, reconcile.*
 
 **a) By hand.** For a 1 kHz compare-match interrupt from Timer1 at 16 MHz, give the prescaler, the
 compare value, and the number of CPU cycles between two interrupts.
@@ -151,14 +152,15 @@ compare value, and the number of CPU cycles between two interrupts.
 **b) In cycles.** Turn your `OCR1A` back into a period: `prescaler x (OCR1A + 1)` cycles, and
 then into microseconds. Do this before (c).
 
-**c) By measurement.** Build a program whose handler toggles a pin, then:
+**c) By measurement.** Build a program whose handler toggles a pin and does nothing else: make
+PB0 an output, and let the handler be `sbi PINB, 0` and `reti`. Then:
 
 ```bash
 make measure IMAGE=app CALLS="--watch B0 --run 200000"
 ```
 
 `--watch` records every transition of a pin and reports the gaps between them, and a period is a
-gap. Ignore the first gap; part (f) is about why.
+gap. Ignore the first gap; part (h) is about why.
 
 **d) Reconcile.** All three should agree exactly, and they do. Say in one sentence why a timer is
 the one thing in this course where that is unsurprising.
@@ -177,8 +179,9 @@ down what you actually measured, then answer three questions:
 values that give an **even** period. Change `OCR1A` to 5331 and then to 5333, measure both, and
 say whether your explanation survived.
 
-**h) The first gap.** In every one of these runs the first gap is different from all the others
-and is roughly twice as long. Explain it, and say whether it would still happen on real hardware.
+**h) The first gap.** In every one of these runs the first gap is different from all the others:
+a few cycles longer than a period. Explain it, and say whether it would still happen on real
+hardware.
 
 ---
 

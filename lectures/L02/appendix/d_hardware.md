@@ -33,9 +33,10 @@ this appendix flashes, with no conversion step between the build and the program
 That is worth a sentence because it is not the usual arrangement. A GNU-toolchain AVR project
 links to an ELF and then runs `avr-objcopy -O ihex` to get here; this course skips both, because
 its assembler has no linker and emits the programmer's format directly
-([L01 B.4](../../L01/appendix/b_toolchain.md#b4-two-images-for-two-jobs)).
+([L01 B.2](../../L01/appendix/b_toolchain.md#b2-avra-as-an-assembler)).
 
-The size comes free with the build, at the end of what `avra` prints:
+The size comes free with the build, near the end of the listing `avra` writes beside the hex,
+`drivers/build/app.lst`:
 
 ```text
 Segment usage:

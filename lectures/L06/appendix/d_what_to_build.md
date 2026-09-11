@@ -1,9 +1,9 @@
 # Appendix D - What To Build
 
 ## D.1 The task
-Three things, and the last of them is the course's capstone: `avr::watchdog::Watchdog`, which
-produces the bytes; `drivers/source/watchdog.asm`, which writes them correctly; and a C program that
-calls the assembly you wrote in L01, unchanged.
+Two things, and the second of them is the course's capstone: `drivers/source/watchdog.asm`, which
+writes the watchdog's control byte correctly; and a C program that calls the assembly you wrote in
+L01, unchanged.
 
 ---
 
@@ -30,9 +30,9 @@ and must do exactly that one thing.
 
 ### Details that are pinned rather than up to you
 **Steps 4 and 5 must be adjacent.** Two `sts` instructions, nothing between them. Two cycles each,
-so they fit the four-cycle window with room; a single instruction inserted between them is enough
-to leave `WDTCSR` holding `0x08`
-([A.4](./a_watchdog.md#what-a-failed-sequence-leaves-behind)).
+so they fit the four-cycle window with one cycle to spare; one single-cycle instruction between
+them still fits, and anything more leaves `WDTCSR` in system reset mode, holding `0x08` on a
+device fresh from reset ([A.4](./a_watchdog.md#what-a-failed-sequence-leaves-behind)).
 
 **Save and restore `SREG`, do not just `cli` and `sei`.** The sequence must run with interrupts
 off, but leaving them off on the way out is a bug: every other interrupt in the program quietly
@@ -71,16 +71,18 @@ you wrote ([Appendix E](./e_exercises.md)'s cross-check).
 
 ### Details that are pinned rather than up to you
 **The prototype's types must match.** `uint8_t shift_bits(uint8_t)`. Declaring the argument wider
-passes it in `r25:r24` and your subroutine reads only `r24`, which works for small values and is
-still wrong.
+passes it in `r25:r24` and your subroutine reads only `r24`, which changes nothing you can see and
+is still wrong; declaring the result wider as well reads back an `r25` your subroutine never wrote
+([C.3](./c_c_abi.md#c3-calling-your-assembly-from-c)).
 
 **Do not add `extern "C"`.** This is C, not C++, and there is no name mangling to suppress.
 
 ---
 
 ## D.4 What none of this does
-**The watchdog class does not touch hardware.** It computes bytes. Writing them correctly is the
-assembly's job, and writing them at all is your program's.
+**The driver does not choose the byte.** It writes whatever `r24` holds. Working that byte out
+from [A.3](./a_watchdog.md#a3-the-registers) is your program's job, and so is deciding to write it
+at all.
 
 **The driver does not decide when to pet.** Where `watchdog_reset` is called from is the entire
 difference between a watchdog that works and one that is decoration

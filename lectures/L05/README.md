@@ -2,7 +2,7 @@
 
 ## Agenda
 * Why a timer, and what is wrong with a loop that counts.
-* The prescaler: five ratios, and the two places the ladder stops doubling by eight.
+* The prescaler: five ratios, and the two places the ladder stops multiplying by eight.
 * CTC mode, and why the period is `OCR1A + 1` ticks rather than `OCR1A`.
 * Turning a frequency you want into a prescaler and a compare value, and the error left over.
 * Frequencies no timer on this device can reach, in both directions.
@@ -13,7 +13,7 @@
 
 ## Lecture plan
 Worked in this order:
-1. **The counting loop, and its problem.** L02 ended with an LED toggling at about 127 kHz
+1. **The counting loop, and its problem.** L02 ended with an LED blinking at about 127 kHz
    because nothing was slowing it down. The fix is not a delay loop, and
    [Appendix A](./appendix/a_timers.md) is about why.
 2. **The hardware, once.** A counter, a prescaler, a compare register and a flag. Five paragraphs
@@ -52,7 +52,7 @@ The second is this lecture's cross-check, and the answer is: sometimes.
 * Say what a prescaler does, name the five ratios, and say which steps between them are not a
   factor of eight.
 * Configure Timer1 for CTC mode at a chosen prescaler, from the datasheet's bit names.
-* Turn a wanted frequency into a prescaler and a compare value, by hand and in code.
+* Turn a wanted frequency into a prescaler and a compare value, by hand.
 * Say why the compare value is one less than the tick count, and what going wrong there costs.
 * State the fastest and slowest frequencies a given timer can reach, and say what to do about a
   frequency below the slowest.
@@ -82,7 +82,7 @@ The second is this lecture's cross-check, and the answer is: sometimes.
 ## Reference
 * [Appendix A](./appendix/a_timers.md): the hardware, and why a timer beats a loop.
 * [Appendix B](./appendix/b_frequency.md): the arithmetic, and the frequencies you cannot have.
-* [Appendix C](./appendix/c_what_to_build.md): the `Timer` and `timer.asm` specifications.
+* [Appendix C](./appendix/c_what_to_build.md): the `timer.asm` specification and the hardware setup.
 * [Appendix D](./appendix/d_exercises.md): the exercises.
 * Appendix E: the worked solutions, published after the lecture rather than with it.
 * [L03 Appendix B](../L03/appendix/b_isr_contract.md) for the handler contract, which a
@@ -95,6 +95,6 @@ The second is this lecture's cross-check, and the answer is: sometimes.
 * Timed write sequences, and hardware that refuses to be configured carelessly.
 * Sleep modes, and what is still running in each.
 * Calling your assembly from C, and C from your assembly, which is where the calling contract
-  you have been following since L02 finally has another party to it.
+  you have been following since L01 finally has another party to it.
 
 ---

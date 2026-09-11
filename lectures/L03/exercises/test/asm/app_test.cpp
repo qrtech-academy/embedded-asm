@@ -5,7 +5,7 @@
  *        exists in drivers/app; HAVE_LED and HAVE_BTN say the drivers its handler is built
  *        out of exist. The program is not new in L03: L01 puts a stack pointer and a call in
  *        it, and that program is complete and correct and has no handler in it at all. Testing
- *        it for one would report seven failures at a reader who has done everything right.
+ *        it for one would report failures at a reader who has done everything right.
  *
  *        HAVE_BTN is what says otherwise. The handler cannot exist before `btn.asm` does,
  *        because it calls `btn_pressed`, so the button driver is the honest marker for "the
@@ -24,7 +24,7 @@
  *        What is deliberately not here is a cycle count. From L02 onwards the suites check the
  *        relationships a specification forces and leave the constants alone, and a handler is
  *        the most personal routine in the library: yours saves the registers yours uses. A test
- *        asserting "your handler costs 88 cycles" would be pinning your instruction sequence,
+ *        asserting "your handler costs 104 cycles" would be pinning your instruction sequence,
  *        which is the exercise's job and not this file's.
  */
 #if defined(HAVE_APP) && defined(APP_HEX) && defined(HAVE_LED) && defined(HAVE_BTN)
@@ -108,7 +108,7 @@ void pressAndRelease(avrsim::Mcu& mcu)
 /**
  * @brief The program links, loads, and defines the handler by the name the specification gives.
  *
- *        Checked first and on its own. A handler without a `.global` line is invisible from
+ *        Checked first and on its own. A handler under any other name is invisible from
  *        outside, and the measurement exercise in Appendix D finds it by this name too.
  */
 TEST(App, DefinesItsHandler)

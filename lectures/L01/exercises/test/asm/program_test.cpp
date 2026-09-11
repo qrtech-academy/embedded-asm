@@ -66,8 +66,8 @@ constexpr std::uint16_t Portb{atmega328p::PinB + atmega328p::PortOffset};
  *        two names for one register, and the 0x20 between them is the whole of A.5.
  *
  *        The two expectations fail separately on purpose, because they mean different things.
- *        Only the second failing is a program that set the level and never made the pin an
- *        output, which is not a dark LED but a pin with its pull-up on. Only the first failing
+ *        Only the first failing is a program that set the level and never made the pin an
+ *        output, which is not a dark LED but a pin with its pull-up on. Only the second failing
  *        is the reverse: an output driving low. And `sts DDRB, r16`, which is the mistake A.5
  *        spends a paragraph on, fails the first, because it wrote the register r4 instead.
  */

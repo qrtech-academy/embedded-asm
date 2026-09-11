@@ -74,8 +74,8 @@ The second is this lecture's cross-check, and the answer is no, twice over.
 * A handler increments a 16-bit counter and the main loop reads it with two `lds` instructions.
   Give a value the main loop can read that the counter has never held, and say how many cycles
   wide the window is.
-* Your handler measures 88 cycles. For how long are interrupts disabled, and why is the answer
-  larger than 88?
+* Your handler measures 104 cycles. For how long are interrupts disabled, and why is the answer
+  larger than 104?
 
 ---
 
@@ -95,6 +95,6 @@ The second is this lecture's cross-check, and the answer is no, twice over.
   struct field access one instruction.
 * Where the seven bytes of an LED structure should actually live, and why `RAMEND + 1` is not it.
 * The stack, now that an interrupt can arrive on top of two nested calls.
-* Arrays of drivers, and a handler that walks one.
+* Arrays of drivers, and a subroutine that walks one.
 
 ---
