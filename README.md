@@ -58,13 +58,14 @@ not always agreeing:
 Where the two disagree, the reconciliation is the lesson, and every lecture has one exercise that
 is exactly this. Your hand count of `shift_bits` and the figure the simulator reports at a call
 site differ by a fixed amount, and the difference is the `ldi` that set the argument up and the
-`rcall` that got you there. Your timer's requested 1000 Hz and its actual 1000.0 Hz agree, and
-then at 3 kHz they do not, and the gap is not rounding noise but the distance to the nearest
-frequency a whole number of ticks can express.
+`rcall` that got you there. Your timer's computed period at 1 kHz and its measured period
+agree, and then at 3 kHz they do not, and the gap is not the timer's error but the two-cycle
+instruction each interrupt has to wait for.
 
-And once, in L03, they disagree because the **simulator** is wrong: simavr reports a flat
-four-cycle interrupt entry where the datasheet says six to nine. Knowing which of your two
-instruments to believe, and why, is the skill this arrangement exists to build.
+And once, in L03, they disagree because the **simulator** is wrong: simavr takes an interrupt
+without charging the four cycles the datasheet says the hardware spends pushing the program
+counter. Knowing which of your two instruments to believe, and why, is the skill this arrangement
+exists to build.
 
 **No exercise in this course needs hardware.** Everything is written, assembled, simulated and
 verified on an ordinary laptop. If you own an Arduino Uno or Nano with an ATmega328p processor and
@@ -185,5 +186,16 @@ It takes this course as a prerequisite in full, and L06 in particular, because t
 contract the two halves of a kernel meet across. L03's interrupt material, L04's stack arithmetic
 and L05's timer arithmetic are used there directly rather than recapped, which is the other half
 of why 2048 bytes and one core are still the right machine to learn this on.
+
+---
+
+## License
+The source code is released under the [MIT License](./LICENSE): the assembly contracts, the device
+headers, the test suites, the build and CI scripts, and the Python that draws the figures.
+
+The course material is licensed under [CC BY-NC-SA 4.0](./LICENSE-CONTENT): the lectures,
+exercises and solutions, the exam papers, the other Markdown documents, and the figures. You may
+share and adapt it for any non-commercial purpose, with credit, as long as what you share carries
+the same license. The two submodules carry their own licenses.
 
 ---
